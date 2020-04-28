@@ -1,0 +1,6 @@
+[submodule "Weak_YouTube_dataset"]
+	path = Weak_YouTube_dataset
+	url = git@github.com:shivgarg/Weak_YouTube_dataset.git
+[submodule "webvision-2020-public"]
+	path = webvision-2020-public
+	url = git@github.com:shivgarg/webvision-2020-public.git
