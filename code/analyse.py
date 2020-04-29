@@ -16,16 +16,15 @@ args.add_argument('dest_dir')
 args = args.parse_args()
 
 videos = []
-for d,s,f in tqdm(os.walk(args.dir)):
-    for files in f:
-        print(files)
+for d,s,f in os.walk(args.dir):
+    for files in tqdm(f):
         hf = h5py.File(os.path.join(d,files),'r')
-        filenames = hf.get('filenames')[()]
+        filenames = list(hf.get('filenames')[()])
         filenames.append('')
         labels = hf.get('labels')[()]
         last = filenames[0]
         start = 0
-        for i,fname in tqdm(enumerate(filenames[1:])):
+        for i,fname in enumerate(filenames[1:]):
             if last != fname:
                 for label_idx in labels[i]:
                     if label_idx == -1:
@@ -34,6 +33,8 @@ for d,s,f in tqdm(os.walk(args.dir)):
                 videos.append([fname, start,i+1,labels[i]])
                 start = i + 1
                 last = fname
+
+print("Num of videos:",len(videos))
 
 with open('videos_map.pkl','wb') as f:
     pickle.dump(videos, f, pickle.HIGHEST_PROTOCOL)
