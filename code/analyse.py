@@ -30,13 +30,13 @@ for d,s,f in os.walk(args.dir):
                     if label_idx == -1:
                         break
                     classes[label_idx].append(len(videos))
-                videos.append([fname, start,i+1,labels[i]])
+                videos.append([files, start,i+1,labels[i]])
                 start = i + 1
                 last = fname
 
 print("Num of videos:",len(videos))
 
-with open('videos_map.pkl','wb') as f:
+with open(os.path.join(args.dest_dir,'videos_map.pkl'),'wb') as f:
     pickle.dump(videos, f, pickle.HIGHEST_PROTOCOL)
-with open('stats.pkl','wb') as f:
+with open(os.path.join(args.dest_dir,'stats.pkl'),'wb') as f:
     pickle.dump(classes, f, pickle.HIGHEST_PROTOCOL)

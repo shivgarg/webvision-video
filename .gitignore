@@ -2,3 +2,4 @@ ckpt_dir
 data
 venv
 .vscode/settings.json
+**/__pycache__
