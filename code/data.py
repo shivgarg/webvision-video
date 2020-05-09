@@ -26,10 +26,10 @@ class UniformSampler:
                 label = hf.get('labels')[()]
                 for i in range(video_map[idx+i][1],video_map[idx+i][2]):
                     features.append(feat[i])
-                    label_one_hot = [0 for i in range(513)]
+                    label_one_hot = [[1,0] for i in range(513)]
                     j=0
                     while label[i][j] != -1:
-                        label_one_hot[int(label[i][j])] = 1
+                        label_one_hot[int(label[i][j])] = [0,1]
                         j+=1
                     labels.append(label_one_hot)
                 
@@ -42,7 +42,7 @@ class UniformSampler:
         return tf.data.Dataset.from_generator(
             cls.generator,
             output_types=(tf.dtypes.float32, tf.dtypes.int64),
-            output_shapes=((None,2048), (None,513))
+            output_shapes=((None,2048), (None,513,2))
         )
 
 """

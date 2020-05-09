@@ -13,12 +13,12 @@ base_config:
   finetuning_task: null
   hidden_act: gelu
   hidden_dropout_prob: 0.1
-  hidden_size: 512
+  hidden_size: 768
   id2label:
     0: LABEL_0
     1: LABEL_1
   initializer_range: 0.02
-  intermediate_size: 512
+  intermediate_size: 3072
   is_decoder: false
   is_encoder_decoder: false
   label2id:
@@ -31,9 +31,9 @@ base_config:
   min_length: 0
   model_type: bert
   no_repeat_ngram_size: 0
-  num_attention_heads: 1
+  num_attention_heads: 12
   num_beams: 1
-  num_hidden_layers: 2
+  num_hidden_layers: 12
   num_return_sequences: 1
   output_attentions: false
   output_hidden_states: false
@@ -50,7 +50,7 @@ base_config:
   type_vocab_size: 2
   use_bfloat16: false
   vocab_size: 30522
-batch_size: 2
+batch_size: 1
 ckpt_dir: ../ckpt
 dataset:
   data_dir: ../data/train
@@ -58,7 +58,9 @@ dataset:
   samples_per_instance: 2
   stats_file: ../configs/stats.pkl
   video_map_file: ../configs/videos_map.pkl
+epochs: 1
 exp_name: exp1
 head:
   name: default
+lr: 0.001
 prefetch_size: 1
