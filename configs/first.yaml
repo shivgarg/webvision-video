@@ -31,9 +31,9 @@ base_config:
   min_length: 0
   model_type: bert
   no_repeat_ngram_size: 0
-  num_attention_heads: 2
+  num_attention_heads: 4
   num_beams: 1
-  num_hidden_layers: 2
+  num_hidden_layers: 3
   num_return_sequences: 1
   output_attentions: false
   output_hidden_states: false
@@ -50,18 +50,18 @@ base_config:
   type_vocab_size: 2
   use_bfloat16: false
   vocab_size: 30522
-batch_size: 1
-ckpt_dir: ../ckpt
-ckpt_steps: 10
+batch_size: 8
+ckpt_dir: ../ckpt_dir
+ckpt_steps: 1000
 dataset:
-  data_dir: ../data/train
+  data_dir: ../data/train/
   sampler: UniformSampler
-  samples_per_instance: 2
+  samples_per_instance: 3
   stats_file: ../configs/stats.pkl
   video_map_file: ../configs/videos_map.pkl
-epochs: 1
+epochs: 50
 exp_name: exp1
 head:
   name: default
 lr: 0.001
-prefetch_size: 1
+prefetch_size: 4

@@ -87,12 +87,12 @@ for epoch in range(config['epochs']):
             with summary.as_default():
                 template = 'Epoch {}, Loss: {}'
                 print(template.format(epoch + 1,
-                            train_loss.result()))
-                tf.summary.scalar('loss', train_loss.result(), step=int(epoch*num_steps+idx))
+                            train_loss.result()),end=',')
                 for metric in METRICS:
-                    print(metric.name, metric.result().numpy(),end=',')
+                    print(metric.name.upper(), metric.result().numpy(),end=',')
                     tf.summary.scalar(metric.name, metric.result(), step=int(epoch*num_steps+idx))
                     metric.reset_states()
+                tf.summary.scalar('loss', train_loss.result(), step=int(epoch*num_steps+idx))
                 train_loss.reset_states()
                 for variable in model.trainable_variables:
                     #print(variable.name)

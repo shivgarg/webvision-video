@@ -16,10 +16,10 @@ global_dict['ckpt_dir'] = args.ckpt_dir
 global_dict['base_arch'] = 'bert-small'
 global_dict['base_config'] = BertConfig.from_pretrained('bert-base-uncased').to_dict()
 # Training config
-global_dict['batch_size'] = 1
-global_dict['prefetch_size'] = 1
+global_dict['batch_size'] = 8
+global_dict['prefetch_size'] = 4
 global_dict['lr'] = 0.001
-global_dict['epochs'] = 1
+global_dict['epochs'] = 50
 global_dict['ckpt_steps'] = 1000
 
 
@@ -28,7 +28,7 @@ dataset = {}
 dataset['data_dir'] = args.data_dir
 dataset['stats_file'] = args.stats_file
 dataset['video_map_file'] = args.video_map_file
-dataset['samples_per_instance'] = 2
+dataset['samples_per_instance'] = 3
 dataset['sampler'] = 'UniformSampler'
 
 # Head Config
