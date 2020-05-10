@@ -20,6 +20,7 @@ global_dict['batch_size'] = 1
 global_dict['prefetch_size'] = 1
 global_dict['lr'] = 0.001
 global_dict['epochs'] = 1
+global_dict['ckpt_steps'] = 1000
 
 
 # Dataset Config

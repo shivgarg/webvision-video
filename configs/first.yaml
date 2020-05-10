@@ -31,9 +31,9 @@ base_config:
   min_length: 0
   model_type: bert
   no_repeat_ngram_size: 0
-  num_attention_heads: 12
+  num_attention_heads: 2
   num_beams: 1
-  num_hidden_layers: 12
+  num_hidden_layers: 2
   num_return_sequences: 1
   output_attentions: false
   output_hidden_states: false
@@ -52,6 +52,7 @@ base_config:
   vocab_size: 30522
 batch_size: 1
 ckpt_dir: ../ckpt
+ckpt_steps: 10
 dataset:
   data_dir: ../data/train
   sampler: UniformSampler

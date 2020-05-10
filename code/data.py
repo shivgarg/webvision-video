@@ -7,12 +7,13 @@ import os
 class UniformSampler:
     
     config = {}
+    video_map = {}
     
     @classmethod
     def generator(cls):
         # Opening the file
         cfg = cls.config
-        video_map = pickle.load(open(cfg['video_map_file'],'rb'))
+        video_map = cls.video_map
         vid_order = list(range(len(video_map)))
         random.shuffle(vid_order)
         num_vid_data_point = cfg['samples_per_instance']
@@ -26,23 +27,33 @@ class UniformSampler:
                 label = hf.get('labels')[()]
                 for i in range(video_map[idx+i][1],video_map[idx+i][2]):
                     features.append(feat[i])
-                    label_one_hot = [[1,0] for i in range(513)]
+                    label_one_hot = [0 for i in range(513)]
                     j=0
-                    while label[i][j] != -1:
-                        label_one_hot[int(label[i][j])] = [0,1]
+                    while (j < len(label[i])) and (label[i][j] != -1):
+                        label_one_hot[int(label[i][j])] = 1
                         j+=1
                     labels.append(label_one_hot)
                 
             # Reading data (line, record) from the file
-            idx+=2
+            idx+=num_vid_data_point
             yield (features, labels)
+
+    @classmethod
+    def get_spec(cls):
+        return [tf.TensorSpec(shape=[None, None, 2048], dtype=tf.float32),tf.TensorSpec(shape=[None, None, 513], dtype=tf.int64)]
+    
+    @classmethod
+    def get_len(cls):
+        return len(cls.video_map)
 
     def __new__(cls, config):
         cls.config = config
+        cls.video_map = pickle.load(open(config['video_map_file'],'rb'))
+        
         return tf.data.Dataset.from_generator(
             cls.generator,
             output_types=(tf.dtypes.float32, tf.dtypes.int64),
-            output_shapes=((None,2048), (None,513,2))
+            output_shapes=((None,2048), (None,513))
         )
 
 """

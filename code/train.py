@@ -1,10 +1,13 @@
 import tensorflow as tf
+import tensorflow_addons as tfa
+
 from transformers import TFBertModel, BertConfig
 import yaml
 import argparse
-
+import numpy as np
 from data import *
 from models import *
+
 
 MODELS = {
         "bert-small": BertBasic
@@ -20,39 +23,79 @@ config = yaml.load(open(args.config_file,'r'))
 model = MODELS[config['base_arch']](config)
 
 dataset = DATASET[config['dataset']['sampler']](config['dataset'])
-dataset = dataset.padded_batch(config['batch_size'],padded_shapes=([None, None],[None,None, None])).prefetch(config['prefetch_size'])
+num_steps = int(DATASET[config['dataset']['sampler']].get_len()/(config['batch_size']*config['dataset']['samples_per_instance']))
+input_spec = DATASET[config['dataset']['sampler']].get_spec()
+dataset = dataset.padded_batch(config['batch_size'],padded_shapes=([None, 2048],[None,513])).prefetch(config['prefetch_size'])
 
-loss_fn = tf.losses.BinaryCrossentropy(from_logits=True)
-optimizer = tf.optimizers.Adam(lr=config['lr'])
+
+lr_schedule = tf.keras.optimizers.schedules.PolynomialDecay(
+        initial_learning_rate=config['lr'], decay_steps=config['epochs']*num_steps, end_learning_rate=config['lr']/10,
+    )
+
+optimizer = tfa.optimizers.AdamW(
+        learning_rate=lr_schedule,
+        weight_decay=0.0001)
+
 
 train_loss = tf.keras.metrics.Mean(name='train_loss')
-train_accuracy = tf.keras.metrics.BinaryAccuracy(name='train_acc')
+METRICS = [
+      tf.keras.metrics.TruePositives(name='tp'),
+      tf.keras.metrics.FalsePositives(name='fp'),
+      tf.keras.metrics.TrueNegatives(name='tn'),
+      tf.keras.metrics.FalseNegatives(name='fn'), 
+      tf.keras.metrics.BinaryAccuracy(name='accuracy'),
+      tf.keras.metrics.Precision(name='precision'),
+      tf.keras.metrics.Recall(name='recall'),
+      tf.keras.metrics.AUC(name='auc'),
+]
 
+ckpt = tf.train.Checkpoint(optimizer=optimizer,model = model, dataset=dataset)
+manager = tf.train.CheckpointManager(ckpt, config['ckpt_dir'], max_to_keep=10)
+summary = tf.summary.create_file_writer(config['ckpt_dir'])
 
-@tf.function
+#@tf.function(input_signature=input_spec)
 def train_step(inputs_embeds, labels):
     with tf.GradientTape() as tape:
         output = model(inputs_embeds, training=True)
-        output = tf.reshape(output,[-1,2])
-        labels = tf.reshape(labels,[-1,2])
-        loss = loss_fn(labels,output)
-        
+        mask = tf.cast(tf.identity(labels),tf.float32)
+        ones_ratio = tf.cast(tf.reduce_sum(mask),tf.float32)/tf.cast(tf.size(mask,out_type=tf.int64),tf.float32)
+        zeros_ratio = 1 - ones_ratio
+        mask = (1-mask)*(ones_ratio/zeros_ratio) + mask *(zeros_ratio/ones_ratio)
+        loss = tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.cast(labels,tf.float32),logits=output)*mask)
+
     gradients = tape.gradient(loss, model.trainable_variables)
     optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-    probs = tf.nn.softmax(output)
+    probs = tf.sigmoid(output)
 
     train_loss(loss)
-    train_accuracy(labels, probs)
+    for metric in METRICS:
+        metric(labels, probs)
 
+
+       
 for epoch in range(config['epochs']):
-    train_loss.reset_states()
-    train_accuracy.reset_states()
-    for sample in dataset:
+    print(epoch)
+    for idx, sample in enumerate(dataset):
         inputs_embeds = sample[0]
         labels = sample[1]
-        train_step(inputs_embeds, labels)
         
-        template = 'Epoch {}, Loss: {}, Accuracy: {}'
-        print(template.format(epoch + 1,
-                        train_loss.result(),
-                        train_accuracy.result() * 100))
+        train_step(inputs_embeds, labels)
+      
+        if idx%config['ckpt_steps'] == 0:
+            path = manager.save()
+            print("Saved ckpt for {}/{}: {}".format(epoch,idx,path))
+            with summary.as_default():
+                template = 'Epoch {}, Loss: {}'
+                print(template.format(epoch + 1,
+                            train_loss.result()))
+                tf.summary.scalar('loss', train_loss.result(), step=int(epoch*num_steps+idx))
+                for metric in METRICS:
+                    print(metric.name, metric.result().numpy(),end=',')
+                    tf.summary.scalar(metric.name, metric.result(), step=int(epoch*num_steps+idx))
+                    metric.reset_states()
+                train_loss.reset_states()
+                for variable in model.trainable_variables:
+                    #print(variable.name)
+                    if not 'embeddings' in variable.name:
+                        tf.summary.histogram(variable.name,variable.value().numpy(), step = epoch*num_steps+idx)
+                        summary.flush()
