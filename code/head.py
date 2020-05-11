@@ -7,7 +7,7 @@ from tensorflow.keras.layers import Dense
 class BertHead(Model):
     def __init__(self):
         super(BertHead,self).__init__()
-        self.fc1 = Dense(513, activation='relu')
+        self.fc1 = Dense(513)
 
     def call(self, x):
         x = self.fc1(x)

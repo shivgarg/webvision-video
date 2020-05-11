@@ -63,8 +63,8 @@ def train_step(inputs_embeds, labels):
         mask = ((1.0-labels) + labels *(200.0))*attention_mask
         loss = tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(labels=labels,logits=output)*mask)
 
-    gradients = tape.gradient(loss, model.trainable_variables)
-    optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+    gradients = zip(tape.gradient(loss, model.trainable_variables),model.trainable_variables)
+    optimizer.apply_gradients(gradients)
     probs = tf.sigmoid(output)
 
     train_loss(loss)
@@ -79,7 +79,7 @@ for epoch in range(config['epochs']):
         inputs_embeds = sample[0]
         labels = sample[1]
         train_step(inputs_embeds, labels)
-      
+        
         if idx%config['ckpt_steps'] == 0:
             path = manager.save()
             print("Saved ckpt for {}/{}: {}".format(epoch,idx,path))
@@ -94,7 +94,6 @@ for epoch in range(config['epochs']):
                 tf.summary.scalar('loss', train_loss.result(), step=int(epoch*num_steps+idx))
                 train_loss.reset_states()
                 for variable in model.trainable_variables:
-                    #print(variable.name)
                     if not 'embeddings' in variable.name:
-                        tf.summary.histogram(variable.name,variable.value().numpy(), step = epoch*num_steps+idx)
-                        summary.flush()
+                        tf.summary.histogram(variable.name,variable.value().numpy(), step = int(epoch*num_steps+idx))
+                summary.flush()
