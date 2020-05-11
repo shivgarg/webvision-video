@@ -41,11 +41,13 @@ sentencepiece==0.1.86
 six==1.14.0
 tensorboard==2.1.1
 tensorflow-gpu==2.1.0
+tensorflow-addons==0.9.1
 tensorflow-estimator==2.1.0
 termcolor==1.1.0
 tokenizers==0.5.2
 tqdm==4.45.0
 transformers==2.8.0
+typeguard==2.7.1
 urllib3==1.25.9
 Werkzeug==1.0.1
 wrapt==1.12.1

@@ -20,8 +20,7 @@ class BertBasic(Model):
         self.base = TFBertModel(self.model_config)
         self.head = HEADS[config['head']['name']]()
 
-    def call(self, embeds):
-        attention_mask = tf.keras.layers.Masking()(embeds)._keras_mask
+    def call(self, embeds, attention_mask):
         x = self.fc1(embeds)
         x,_ = self.base(None,  attention_mask = attention_mask, inputs_embeds=x)
         x = self.head(x)

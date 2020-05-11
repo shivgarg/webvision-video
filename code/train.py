@@ -53,15 +53,15 @@ ckpt = tf.train.Checkpoint(optimizer=optimizer,model = model, dataset=dataset)
 manager = tf.train.CheckpointManager(ckpt, config['ckpt_dir'], max_to_keep=10)
 summary = tf.summary.create_file_writer(config['ckpt_dir'])
 
-#@tf.function(input_signature=input_spec)
+@tf.function(input_signature=input_spec)
 def train_step(inputs_embeds, labels):
     with tf.GradientTape() as tape:
-        output = model(inputs_embeds, training=True)
-        mask = tf.cast(tf.identity(labels),tf.float32)
-        ones_ratio = tf.cast(tf.reduce_sum(mask),tf.float32)/tf.cast(tf.size(mask,out_type=tf.int64),tf.float32)
-        zeros_ratio = 1 - ones_ratio
-        mask = (1-mask)*(ones_ratio/zeros_ratio) + mask *(zeros_ratio/ones_ratio)
-        loss = tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.cast(labels,tf.float32),logits=output)*mask)
+        attention_mask = tf.keras.layers.Masking()(inputs_embeds)._keras_mask
+        output = model(inputs_embeds, attention_mask, training=True)
+        attention_mask = tf.expand_dims(tf.cast(attention_mask,tf.float32),-1)
+        labels = tf.cast(labels, tf.float32)
+        mask = ((1.0-labels) + labels *(200.0))*attention_mask
+        loss = tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(labels=labels,logits=output)*mask)
 
     gradients = tape.gradient(loss, model.trainable_variables)
     optimizer.apply_gradients(zip(gradients, model.trainable_variables))
@@ -78,7 +78,6 @@ for epoch in range(config['epochs']):
     for idx, sample in enumerate(dataset):
         inputs_embeds = sample[0]
         labels = sample[1]
-        
         train_step(inputs_embeds, labels)
       
         if idx%config['ckpt_steps'] == 0:
