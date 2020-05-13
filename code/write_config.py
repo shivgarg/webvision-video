@@ -21,15 +21,15 @@ global_dict['prefetch_size'] = 4
 global_dict['lr'] = 0.001
 global_dict['epochs'] = 50
 global_dict['ckpt_steps'] = 1000
-
-
+global_dict['max_to_keep'] = 10
+global_dict['loss'] = 'cross_entropy'
 # Dataset Config
 dataset = {}
 dataset['data_dir'] = args.data_dir
 dataset['stats_file'] = args.stats_file
 dataset['video_map_file'] = args.video_map_file
 dataset['samples_per_instance'] = 3
-dataset['sampler'] = 'UniformSampler'
+dataset['sampler'] = 'UniformSamplerUnique'
 
 # Head Config
 head = {}
