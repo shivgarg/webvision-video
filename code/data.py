@@ -22,15 +22,15 @@ class UniformSampler:
             features = []
             labels = []
             for i in range(num_vid_data_point):
-                hf = h5py.File(os.path.join(cfg['data_dir'],video_map[idx+i][0]),'r') 
+                hf = h5py.File(os.path.join(cfg['data_dir'],video_map[vid_order[idx+i]][0]),'r') 
                 feat = hf.get('data')[()]
                 label = hf.get('labels')[()]
-                for i in range(video_map[idx+i][1],video_map[idx+i][2]):
-                    features.append(feat[i])
-                    label_one_hot = [0 for i in range(513)]
+                for k in range(video_map[vid_order[idx+i]][1],video_map[vid_order[idx+i]][2]):
+                    features.append(feat[k])
+                    label_one_hot = [0 for _ in range(513)]
                     j=0
-                    while (j < len(label[i])) and (label[i][j] != -1):
-                        label_one_hot[int(label[i][j])] = 1
+                    while (j < len(label[k])) and (label[k][j] != -1):
+                        label_one_hot[int(label[k][j])] = 1
                         j+=1
                     labels.append(label_one_hot)
                 
@@ -76,12 +76,12 @@ class UniformSamplerUnique:
             for i in range(num_vid_data_point):
                 if len(features) >= 512:
                     break
-                hf = h5py.File(os.path.join(cfg['data_dir'],video_map[idx+i][0]),'r') 
+                hf = h5py.File(os.path.join(cfg['data_dir'],video_map[vid_order[idx]][0]),'r') 
                 feat = hf.get('data')[()]
                 label = hf.get('labels')[()]
-                for i in range(video_map[idx+i][1],video_map[idx+i][2]):
-                    features.append(feat[i])
-                    labels.append(label[i][0])
+                for j in range(video_map[vid_order[idx]][1],video_map[vid_order[idx]][2]):
+                    features.append(feat[j])
+                    labels.append(label[j][0])
                     if len(features) >= 512:
                         break      
                 idx += 1

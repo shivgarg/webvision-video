@@ -51,7 +51,7 @@ manager = tf.train.CheckpointManager(ckpt, config['ckpt_dir'],
 summary = tf.summary.create_file_writer(config['ckpt_dir'])
 
 
-@tf.function(input_signature=input_spec)
+#@tf.function(input_signature=input_spec)
 def train_step(inputs_embeds, labels):
     with tf.GradientTape(persistent=True) as tape:
         attention_mask = tf.keras.layers.Masking()(inputs_embeds)._keras_mask
@@ -59,11 +59,13 @@ def train_step(inputs_embeds, labels):
         loss, probs = loss_fn(output, labels)
 
     gradients = zip(tape.gradient(loss, model.trainable_variables),model.trainable_variables)
+    grads = zip(tape.gradient(loss, model.trainable_variables),model.trainable_variables)
+    
     optimizer.apply_gradients(gradients)
     train_loss(loss)
     for metric in metrics:
         metric(labels, probs, sample_weight=attention_mask)
-
+    return grads
 
        
 for epoch in range(config['epochs']):
@@ -71,7 +73,7 @@ for epoch in range(config['epochs']):
     for idx, sample in enumerate(dataset):
         inputs_embeds = sample[0]
         labels = sample[1]
-        train_step(inputs_embeds, labels)
+        grads = train_step(inputs_embeds, labels)
         
         if idx%config['ckpt_steps'] == 0:
             path = manager.save(int(epoch*num_steps+idx))
@@ -89,4 +91,7 @@ for epoch in range(config['epochs']):
                 for variable in model.trainable_variables:
                     if not 'embeddings' in variable.name:
                         tf.summary.histogram(variable.name,variable.value().numpy(), step = int(epoch*num_steps+idx))
+                for g,var in grads:
+                    if (not 'embeddings' in var.name) and (not 'pooler' in var.name):
+                        tf.summary.histogram("grad/{}".format(var.name), g.numpy(),step=int(epoch*num_steps+idx))                 
                 summary.flush()
