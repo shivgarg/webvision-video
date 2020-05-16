@@ -1,7 +1,7 @@
 universe = vanilla
-Initialdir = /scratch/cluster/shivgarg
+Initialdir = /scratch/cluster/shivgarg/webvision-video/code
 Executable = /lusr/bin/bash
-Arguments = ./run_eval_10fps.sh
+Arguments = ./run.sh
 +Group   = "GRAD"
 +Project = "INSTRUCTIONAL"
 +ProjectDescription = "Research CS395"
@@ -9,9 +9,9 @@ Requirements = TARGET.GPUSlot
 request_GPUS = 1
 +GPUJob = true
 getenv = True
-Log = eval_crop_10fps.log
-Error = eval_crop_10fps.err
-Output = eval_crop_10fps.out
+Log = train.log
+Error = train.err
+Output = train.out
 Notification = complete
 Notify_user =  shivamgarg@utexas.edu
 Queue 1

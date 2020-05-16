@@ -30,7 +30,7 @@ dataset = dataset.padded_batch(config['batch_size'],padded_shapes=padded_spec, p
 
 
 lr_schedule = tf.keras.optimizers.schedules.PolynomialDecay(
-        initial_learning_rate=config['lr'], decay_steps=config['epochs']*num_steps, end_learning_rate=config['lr']/10,
+        initial_learning_rate=config['lr'], decay_steps=config['epochs']*num_steps, end_learning_rate=config['lr']/1000.0,
     )
 
 optimizer = tf.optimizers.Adam(
