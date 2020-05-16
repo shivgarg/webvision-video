@@ -30,6 +30,7 @@ dataset['stats_file'] = args.stats_file
 dataset['video_map_file'] = args.video_map_file
 dataset['samples_per_instance'] = 3
 dataset['sampler'] = 'UniformSamplerUnique'
+dataset['shuffle'] = True
 
 # Head Config
 head = {}

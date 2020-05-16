@@ -19,7 +19,7 @@ args = argparse.ArgumentParser()
 args.add_argument('config_file')
 args = args.parse_args()
 
-config = yaml.load(open(args.config_file,'r'))
+config = yaml.safe_load(open(args.config_file,'r'))
 
 model = MODELS[config['base_arch']](config)
 loss_fn = LOSS[config['loss']]()

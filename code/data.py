@@ -15,7 +15,8 @@ class UniformSampler:
         cfg = cls.config
         video_map = cls.video_map
         vid_order = list(range(len(video_map)))
-        random.shuffle(vid_order)
+        if cfg['shuffle']:
+            random.shuffle(vid_order)
         num_vid_data_point = cfg['samples_per_instance']
         idx = 0
         while idx < len(vid_order) + 1 - num_vid_data_point:
@@ -67,7 +68,8 @@ class UniformSamplerUnique:
         cfg = cls.config
         video_map = cls.video_map
         vid_order = list(range(len(video_map)))
-        random.shuffle(vid_order)
+        if cfg['shuffle']:
+            random.shuffle(vid_order)
         num_vid_data_point = cfg['samples_per_instance']
         idx = 0
         while idx < len(vid_order) + 1 - num_vid_data_point:
