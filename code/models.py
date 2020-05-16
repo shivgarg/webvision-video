@@ -15,13 +15,15 @@ HEADS = {
 class BertBasic(Model):
     def __init__(self, config={}):
         super(BertBasic,self).__init__()
+        self.masking = tf.keras.layers.Masking()
         self.fc1 = Dense(config['base_config']['hidden_size'], activation='relu')
         self.model_config = BertConfig.from_dict(config['base_config'])
         self.base = TFBertModel(self.model_config)
         self.head = HEADS[config['head']['name']]()
 
-    def call(self, embeds, attention_mask, training=False):
+    def call(self, embeds, training=False):
+        attention_mask = self.masking.compute_mask(embeds)
         x = self.fc1(embeds)
         x,_ = self.base(None,  attention_mask = attention_mask, inputs_embeds=x,training=training)
         x = self.head(x)
-        return x
+        return x, attention_mask

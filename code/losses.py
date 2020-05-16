@@ -5,9 +5,10 @@ class sigmoid_loss:
     def __init__(self, skew = 100):
         super().__init__()
         self.skew = 100
+        self.mask = tf.keras.layers.Masking(mask_value=-1)
 
     def __call__(self, y_pred, y_true):
-        attention_mask = tf.keras.layers.Masking(mask_value=-1)(y_true)._keras_mask
+        attention_mask = self.mask.compute_mask(y_true)
         attention_mask = tf.expand_dims(tf.cast(attention_mask,tf.float32),-1)
         y_true = tf.where(y_true==-1,tf.zeros_like(y_true),y_true)
         y_true = tf.cast(y_true, tf.float32)
@@ -33,9 +34,10 @@ class cross_entropy:
     def __init__(self):
         super().__init__()
         self.loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-
+        self.mask = tf.keras.layers.Masking(mask_value=-1)
+    
     def __call__(self, y_pred, y_true):
-        attention_mask = tf.keras.layers.Masking(mask_value=-1)(tf.expand_dims(y_true,-1))._keras_mask
+        attention_mask = self.mask.compute_mask(tf.expand_dims(y_true,-1))
         y_true = tf.where(y_true==-1,tf.zeros_like(y_true),y_true)
         loss = self.loss_fn(y_true, y_pred,attention_mask)
         return loss, tf.nn.softmax(y_pred)

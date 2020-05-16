@@ -10,6 +10,7 @@ from data import *
 from models import *
 from losses import *
 
+
 MODELS = { "bert-small": BertBasic}
 DATASET = {"UniformSampler": UniformSampler, "UniformSamplerUnique": UniformSamplerUnique}
 LOSS = {"sigmoid": sigmoid_loss, "cross_entropy": cross_entropy}
@@ -50,31 +51,33 @@ manager = tf.train.CheckpointManager(ckpt, config['ckpt_dir'],
                     keep_checkpoint_every_n_hours=1)
 summary = tf.summary.create_file_writer(config['ckpt_dir'])
 
-
-#@tf.function(input_signature=input_spec)
+@tf.function(input_signature=input_spec)
 def train_step(inputs_embeds, labels):
     with tf.GradientTape(persistent=True) as tape:
-        attention_mask = tf.keras.layers.Masking()(inputs_embeds)._keras_mask
-        output = model(inputs_embeds, attention_mask, training=True)
+        output, attention_mask = model(inputs_embeds, training=True)
         loss, probs = loss_fn(output, labels)
 
     gradients = zip(tape.gradient(loss, model.trainable_variables),model.trainable_variables)
-    grads = zip(tape.gradient(loss, model.trainable_variables),model.trainable_variables)
+    #grads = tape.gradient(loss, model.trainable_variables)
     
     optimizer.apply_gradients(gradients)
     train_loss(loss)
     for metric in metrics:
         metric(labels, probs, sample_weight=attention_mask)
-    return grads
+    #return grads
 
-       
+
+
 for epoch in range(config['epochs']):
     print(epoch)
     for idx, sample in enumerate(dataset):
         inputs_embeds = sample[0]
         labels = sample[1]
-        grads = train_step(inputs_embeds, labels)
-        
+
+        #tf.summary.trace_on(graph=True)
+        train_step(inputs_embeds, labels)
+        #with summary.as_default():
+        #    tf.summary.trace_export("{}".format(epoch), step = int(epoch*num_steps+idx))
         if idx%config['ckpt_steps'] == 0:
             path = manager.save(int(epoch*num_steps+idx))
             print("Saved ckpt for {}/{}: {}".format(epoch,idx,path))
@@ -91,7 +94,9 @@ for epoch in range(config['epochs']):
                 for variable in model.trainable_variables:
                     if not 'embeddings' in variable.name:
                         tf.summary.histogram(variable.name,variable.value().numpy(), step = int(epoch*num_steps+idx))
-                for g,var in grads:
+                """
+                for g,var in zip(grads, model.trainable_variables):
                     if (not 'embeddings' in var.name) and (not 'pooler' in var.name):
                         tf.summary.histogram("grad/{}".format(var.name), g.numpy(),step=int(epoch*num_steps+idx))                 
+                """
                 summary.flush()
