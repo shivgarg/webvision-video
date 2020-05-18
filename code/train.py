@@ -1,6 +1,7 @@
 import os
 import tensorflow as tf
 import tensorflow_addons as tfa
+import sys
 
 from transformers import TFBertModel, BertConfig
 import yaml
@@ -11,7 +12,7 @@ from models import *
 from losses import *
 
 
-MODELS = { "bert-small": BertBasic}
+MODELS = { "bert-small": BertBasic, "lstm": LSTMBasic}
 DATASET = {"UniformSampler": UniformSampler, "UniformSamplerUnique": UniformSamplerUnique}
 LOSS = {"sigmoid": sigmoid_loss, "cross_entropy": cross_entropy}
 
@@ -50,7 +51,7 @@ manager = tf.train.CheckpointManager(ckpt, config['ckpt_dir'],
                     keep_checkpoint_every_n_hours=1)
 summary = tf.summary.create_file_writer(config['ckpt_dir'])
 
-@tf.function(input_signature=input_spec)
+#@tf.function(input_signature=input_spec)
 def train_step(inputs_embeds, labels):
     with tf.GradientTape(persistent=True) as tape:
         output, attention_mask = model(inputs_embeds, training=True)
@@ -83,8 +84,8 @@ for epoch in range(config['epochs']):
         #with summary.as_default():
         #    tf.summary.trace_export("{}".format(epoch), step = int(epoch*num_steps+idx))
         if idx%config['ckpt_steps'] == 0:
-            path = manager.save(int(epoch*num_steps+idx))
-            print("Saved ckpt for {}/{}: {}".format(epoch,idx,path))
+            #path = manager.save(int(epoch*num_steps+idx))
+            #print("Saved ckpt for {}/{}: {}".format(epoch,idx,path))
             with summary.as_default():
                 template = 'Epoch {}, Loss: {}'
                 print(template.format(epoch + 1,
@@ -104,3 +105,5 @@ for epoch in range(config['epochs']):
                         tf.summary.histogram("grad/{}".format(var.name), g.numpy(),step=int(epoch*num_steps+idx))                 
                 """
                 summary.flush()
+                print()
+                sys.stdout.flush()

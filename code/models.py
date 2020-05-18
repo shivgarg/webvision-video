@@ -27,3 +27,16 @@ class BertBasic(Model):
         x,_ = self.base(None,  attention_mask = attention_mask, inputs_embeds=x,training=training)
         x = self.head(x)
         return x, attention_mask
+
+class LSTMBasic(Model):
+    def __init__(self, config={}):
+        super(LSTMBasic,self).__init__()
+        self.masking = tf.keras.layers.Masking()
+        self.base = tf.keras.layers.LSTM(config['base_config']['num_units'],return_sequences=True)
+        self.head = HEADS[config['head']['name']]()
+
+    def call(self, embeds, training=False):
+        attention_mask = self.masking.compute_mask(embeds)
+        x = self.base(embeds,  mask = attention_mask,training=training)
+        x = self.head(x)
+        return x, attention_mask
