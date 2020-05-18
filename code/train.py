@@ -30,8 +30,7 @@ dataset = dataset.padded_batch(config['batch_size'],padded_shapes=padded_spec, p
 
 
 lr_schedule = tf.keras.optimizers.schedules.PolynomialDecay(
-        initial_learning_rate=config['lr'], decay_steps=config['epochs']*num_steps, end_learning_rate=config['lr']/1000.0,
-    )
+        initial_learning_rate=config['lr'], decay_steps=config['epochs']*num_steps, end_learning_rate=config['lr']/1000.0)
 
 optimizer = tf.optimizers.Adam(
         learning_rate=lr_schedule)
@@ -68,6 +67,11 @@ def train_step(inputs_embeds, labels):
 
 
 
+ckpt.restore(manager.latest_checkpoint)
+if manager.latest_checkpoint:
+    print("restored from {}".format(manager.latest_checkpoint))
+else:
+    print("Initialising from scratch")
 for epoch in range(config['epochs']):
     print(epoch)
     for idx, sample in enumerate(dataset):

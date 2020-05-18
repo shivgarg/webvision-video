@@ -100,7 +100,7 @@ class UniformSamplerUnique:
     def __new__(cls, config):
         cls.config = config
         cls.video_map = pickle.load(open(config['video_map_file'],'rb'))
-        
+        print("Num of videos fragments:", len(cls.video_map)) 
         return tf.data.Dataset.from_generator(
             cls.generator,
             output_types=(tf.dtypes.float32, tf.dtypes.int32),
