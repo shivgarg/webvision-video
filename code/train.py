@@ -2,6 +2,7 @@ import os
 import tensorflow as tf
 import tensorflow_addons as tfa
 import sys
+from shutil import copy
 
 from transformers import TFBertModel, BertConfig
 import yaml
@@ -43,6 +44,7 @@ metrics = loss_fn.get_metrics()
 
 if not os.path.isdir(config['ckpt_dir']):
     os.makedirs(config['ckpt_dir'])
+copy(args.cofig_file, config['ckpt_dir'])
 
 
 ckpt = tf.train.Checkpoint(optimizer=optimizer,model = model, dataset=dataset)
@@ -51,7 +53,7 @@ manager = tf.train.CheckpointManager(ckpt, config['ckpt_dir'],
                     keep_checkpoint_every_n_hours=1)
 summary = tf.summary.create_file_writer(config['ckpt_dir'])
 
-#@tf.function(input_signature=input_spec)
+@tf.function(input_signature=input_spec)
 def train_step(inputs_embeds, labels):
     with tf.GradientTape(persistent=True) as tape:
         output, attention_mask = model(inputs_embeds, training=True)
@@ -73,6 +75,7 @@ if manager.latest_checkpoint:
     print("restored from {}".format(manager.latest_checkpoint))
 else:
     print("Initialising from scratch")
+
 for epoch in range(config['epochs']):
     print(epoch)
     for idx, sample in enumerate(dataset):
@@ -84,8 +87,8 @@ for epoch in range(config['epochs']):
         #with summary.as_default():
         #    tf.summary.trace_export("{}".format(epoch), step = int(epoch*num_steps+idx))
         if idx%config['ckpt_steps'] == 0:
-            #path = manager.save(int(epoch*num_steps+idx))
-            #print("Saved ckpt for {}/{}: {}".format(epoch,idx,path))
+            path = manager.save(int(epoch*num_steps+idx))
+            print("Saved ckpt for {}/{}: {}".format(epoch,idx,path))
             with summary.as_default():
                 template = 'Epoch {}, Loss: {}'
                 print(template.format(epoch + 1,
