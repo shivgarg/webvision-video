@@ -3,6 +3,7 @@ import os
 import argparse
 import pickle
 from tqdm import tqdm
+import random
 
 #id, filename, start_idx, end_idx
 classes = {}
@@ -14,6 +15,8 @@ args = argparse.ArgumentParser()
 args.add_argument('dir')
 args.add_argument('dest_dir')
 args = args.parse_args()
+
+val_frac = 0.2
 
 videos = []
 for d,s,f in os.walk(args.dir):
@@ -36,7 +39,18 @@ for d,s,f in os.walk(args.dir):
 
 print("Num of videos:",len(videos))
 
-with open(os.path.join(args.dest_dir,'videos_map.pkl'),'wb') as f:
-    pickle.dump(videos, f, pickle.HIGHEST_PROTOCOL)
+num_videos = len(videos)
+videos_list = list(range(num_videos))
+random.shuffle(videos_list)
+
+num_val = int(val_frac*num_videos)
+val_videos = videos[:num_val]
+train_videos = videos[num_val:]
+
+with open(os.path.join(args.dest_dir,'videos_map_train.pkl'),'wb') as f:
+    pickle.dump(train_videos, f, pickle.HIGHEST_PROTOCOL)
+with open(os.path.join(args.dest_dir,'videos_map_val.pkl'),'wb') as f:
+    pickle.dump(val_videos, f, pickle.HIGHEST_PROTOCOL)
+
 with open(os.path.join(args.dest_dir,'stats.pkl'),'wb') as f:
     pickle.dump(classes, f, pickle.HIGHEST_PROTOCOL)

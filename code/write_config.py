@@ -4,7 +4,8 @@ from transformers import BertConfig
 args = argparse.ArgumentParser()
 args.add_argument('--data_dir',default='./')
 args.add_argument('--stats_file', default='./stats.pkl')
-args.add_argument('--video_map_file', default='./videos_map.pkl')
+args.add_argument('--train_video_map_file', default='./videos_map.pkl')
+args.add_argument('--val_video_map_file', default='./videos_map.pkl')
 args.add_argument('--ckpt_dir', default='./')
 args.add_argument('output_filename')
 args=args.parse_args()
@@ -31,7 +32,9 @@ global_dict['loss'] = 'cross_entropy'
 dataset = {}
 dataset['data_dir'] = args.data_dir
 dataset['stats_file'] = args.stats_file
-dataset['video_map_file'] = args.video_map_file
+dataset['train_video_map_file'] = args.train_video_map_file
+dataset['val_video_map_file'] = args.val_video_map_file
+
 dataset['samples_per_instance'] = 3
 dataset['sampler'] = 'UniformSamplerUnique'
 dataset['shuffle'] = True

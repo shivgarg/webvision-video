@@ -59,18 +59,16 @@ class UniformSampler:
 
 class UniformSamplerUnique:
     
-    config = {}
-    video_map = {}
-    
-    @classmethod
-    def generator(cls):
+    def generator(self):
         # Opening the file
-        cfg = cls.config
-        video_map = cls.video_map
+        cfg = self.config
+        video_map = self.video_map
         vid_order = list(range(len(video_map)))
         if cfg['shuffle']:
             random.shuffle(vid_order)
         num_vid_data_point = cfg['samples_per_instance']
+        if not self.train:
+            num_vid_data_point = 1
         idx = 0
         while idx < len(vid_order) + 1 - num_vid_data_point:
             features = []
@@ -89,37 +87,47 @@ class UniformSamplerUnique:
                 idx += 1
             yield (features, labels)
 
-    @classmethod
-    def get_spec(cls):
+    def get_spec(self):
         return ([tf.TensorSpec(shape=[None, None, 2048], dtype=tf.float32),tf.TensorSpec(shape=[None, None], dtype=tf.int32)],([None, 2048],[None]))
     
-    @classmethod
-    def get_len(cls):
-        return len(cls.video_map)
+    def get_len(self):
+        return len(self.video_map)
 
-    def __new__(cls, config):
-        cls.config = config
-        cls.video_map = pickle.load(open(config['video_map_file'],'rb'))
-        print("Num of videos fragments:", len(cls.video_map)) 
-        return tf.data.Dataset.from_generator(
+    def get_output_types(self):
+        return (tf.dtypes.float32, tf.dtypes.int32)
+    
+    def get_output_shapes(self):
+        return ((None,2048), (None))
+
+    def __init__(self, config, train=True):
+        self.train = train
+        self.config = config
+        if train:
+            self.video_map = pickle.load(open(config['train_video_map_file'],'rb'))
+        else:
+            self.video_map = pickle.load(open(config['val_video_map_file'],'rb'))
+        print("Num of videos fragments:", len(self.video_map)) 
+        
+"""        
+return tf.data.Dataset.from_generator(
             cls.generator,
             output_types=(tf.dtypes.float32, tf.dtypes.int32),
             output_shapes=((None,2048), (None))
         )
 
-
-
-
-"""
 dataset = {}
 dataset['data_dir'] = '/home/shivam/Documents/cvpr2020/webvision-video/data/train'
 dataset['stats_file'] = '/home/shivam/Documents/cvpr2020/webvision-video/configs/stats.pkl'
-dataset['video_map_file'] = '/home/shivam/Documents/cvpr2020/webvision-video/configs/videos_map.pkl'
+dataset['train_video_map_file'] = '/home/shivam/Documents/cvpr2020/webvision-video/configs/videos_map_train.pkl'
+dataset['val_video_map_file'] = '/home/shivam/Documents/cvpr2020/webvision-video/configs/videos_map_val.pkl'
 dataset['samples_per_instance'] = 2
 dataset['sampler'] = 'UniformSampler'
-
-data = UniformSampler(dataset).padded_batch(3,padded_shapes=([None, None],[None,None])).prefetch(2)
+dataset['shuffle'] = True
+dataset = UniformSamplerUnique(dataset,train=False)
+data = tf.data.Dataset.from_generator(dataset.generator, output_types=dataset.get_output_types(),output_shapes=dataset.get_output_shapes())
+data = data.padded_batch(1,padded_shapes=([None, 2048],[None])).prefetch(2)
 for sample in data:
     print(sample[0].shape, sample[1].shape)
-    print(len(tf.keras.layers.Masking()(sample[0][0])._keras_mask))
+    print(sample[1])
+
 """

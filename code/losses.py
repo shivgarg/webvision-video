@@ -40,12 +40,16 @@ class cross_entropy:
         attention_mask = self.mask.compute_mask(tf.expand_dims(y_true,-1))
         y_true = tf.where(y_true==-1,tf.zeros_like(y_true),y_true)
         loss = self.loss_fn(y_true, y_pred,attention_mask)
-        return loss, tf.nn.softmax(y_pred)
+        return loss
 
     def get_metrics(self):
-        METRICS = [
-                tf.keras.metrics.SparseCategoricalAccuracy(
-                name='sparse_categorical_accuracy', dtype=None)
-                ]
+        METRICS = {
+            "train":
+                [tf.keras.metrics.SparseCategoricalAccuracy(
+                name='sparse_categorical_accuracy_train')],
+            "val":
+                [tf.keras.metrics.SparseCategoricalAccuracy(
+                name='sparse_categorical_accuracy_val')]
+            }
         return METRICS
         

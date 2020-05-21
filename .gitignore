@@ -3,3 +3,4 @@ data
 venv
 .vscode/settings.json
 **/__pycache__
+code/logs
