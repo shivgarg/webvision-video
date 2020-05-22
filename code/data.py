@@ -6,14 +6,10 @@ import os
 
 class UniformSampler:
     
-    config = {}
-    video_map = {}
-    
-    @classmethod
-    def generator(cls):
+    def generator(self):
         # Opening the file
-        cfg = cls.config
-        video_map = cls.video_map
+        cfg = self.config
+        video_map = self.video_map
         vid_order = list(range(len(video_map)))
         if cfg['shuffle']:
             random.shuffle(vid_order)
@@ -39,23 +35,27 @@ class UniformSampler:
             idx+=num_vid_data_point
             yield (features, labels)
 
-    @classmethod
-    def get_spec(cls):
+    def get_spec(self):
         return ([tf.TensorSpec(shape=[None, None, 2048], dtype=tf.float32),tf.TensorSpec(shape=[None, None, 513], dtype=tf.int32)], ([None, 2048],[None,513]))
     
-    @classmethod
-    def get_len(cls):
-        return len(cls.video_map)
+    def get_len(self):
+        return len(self.video_map)
 
-    def __new__(cls, config):
-        cls.config = config
-        cls.video_map = pickle.load(open(config['video_map_file'],'rb'))
-        
-        return tf.data.Dataset.from_generator(
-            cls.generator,
-            output_types=(tf.dtypes.float32, tf.dtypes.int32),
-            output_shapes=((None,2048), (None,513))
-        )
+    def get_output_types(self):
+        return (tf.dtypes.float32, tf.dtypes.int32)
+    
+    def get_output_shapes(self):
+        return ((None,2048), (None))
+
+
+    def __init__(self, config, train=True):
+        self.train = train
+        self.config = config
+        if train:
+            self.video_map = pickle.load(open(config['train_video_map_file'],'rb'))
+        else:
+            self.video_map = pickle.load(open(config['val_video_map_file'],'rb'))
+        print("Num of videos fragments:", len(self.video_map)) 
 
 class UniformSamplerUnique:
     

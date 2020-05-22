@@ -62,14 +62,17 @@ def train_step(inputs_embeds, labels):
         loss = loss_fn(output, labels)
 
     gradients = zip(tape.gradient(loss, model.trainable_variables),model.trainable_variables)
-    #grads = tape.gradient(loss, model.trainable_variables)
     
     optimizer.apply_gradients(gradients)
     train_loss(loss)
-    model_output(tf.nn.softmax(output))
+    softmax = tf.reshape(tf.nn.softmax(output),[-1,513])
+    mask = tf.cast(tf.reshape(attention_mask,[-1,1]), dtype=tf.float32)
+    probs_sum = tf.reduce_sum(tf.math.multiply(softmax,mask),axis = 0)
+    mean = probs_sum/tf.reduce_sum(mask)
+    model_output(mean)
+
     for metric in metrics_train:
         metric(labels, output, sample_weight=attention_mask)
-    #return grads
 
 @tf.function(input_signature=input_spec)
 def val_step(inputs_embeds, labels):
