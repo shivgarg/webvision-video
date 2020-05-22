@@ -13,7 +13,7 @@ from models import *
 from losses import *
 
 
-MODELS = { "bert-small": BertBasic, "lstm": LSTMBasic}
+MODELS = { "bert-small": BertBasic, "lstm": LSTMBasic, "distil-bert": DistilBert}
 DATASET = {"UniformSampler": UniformSampler, "UniformSamplerUnique": UniformSamplerUnique}
 LOSS = {"sigmoid": sigmoid_loss, "cross_entropy": cross_entropy}
 

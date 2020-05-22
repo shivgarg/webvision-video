@@ -1,6 +1,6 @@
 import yaml
 import argparse
-from transformers import BertConfig
+from transformers import BertConfig, DistilBertConfig
 args = argparse.ArgumentParser()
 args.add_argument('--data_dir',default='./')
 args.add_argument('--stats_file', default='./stats.pkl')
@@ -14,12 +14,14 @@ args=args.parse_args()
 global_dict = {}
 global_dict['exp_name'] = 'exp1'
 global_dict['ckpt_dir'] = args.ckpt_dir
-global_dict['base_arch'] = 'lstm'
+global_dict['base_arch'] = 'distil-bert'
 if global_dict['base_arch'] == 'bert-small':
     global_dict['base_config'] = BertConfig.from_pretrained('bert-base-uncased').to_dict()
 elif global_dict['base_arch'] == 'lstm':
     base_config = {'num_units': 512}
     global_dict['base_config'] = base_config
+elif global_dict['base_arch'] == 'distil-bert':
+    global_dict['base_config'] = DistilBertConfig().to_dict()
 # Training config
 global_dict['batch_size'] = 4
 global_dict['prefetch_size'] = 4

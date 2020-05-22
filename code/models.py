@@ -1,5 +1,5 @@
 import tensorflow as tf
-from transformers import TFBertModel, BertConfig
+from transformers import TFBertModel, BertConfig, TFDistilBertModel, DistilBertConfig
 from tensorflow.keras import Model
 from tensorflow.keras.layers import Dense
 from head import *
@@ -39,4 +39,20 @@ class LSTMBasic(Model):
         attention_mask = self.masking.compute_mask(embeds)
         x = self.base(embeds,  mask = attention_mask,training=training)
         x = self.head(x)
+        return x, attention_mask
+
+class DistilBert(Model):
+    def __init__(self, config={}):
+        super(DistilBert,self).__init__()
+        self.masking = tf.keras.layers.Masking()
+        self.fc1 = Dense(config['base_config']['dim'], activation='relu')
+        self.model_config = DistilBertConfig.from_dict(config['base_config'])
+        self.base = TFDistilBertModel(self.model_config)
+        self.head = HEADS[config['head']['name']]()
+
+    def call(self, embeds, training=False):
+        attention_mask = self.masking.compute_mask(embeds)
+        x = self.fc1(embeds)
+        x = self.base(None,  attention_mask = attention_mask, inputs_embeds=x,training=training)
+        x = self.head(x[0])
         return x, attention_mask
