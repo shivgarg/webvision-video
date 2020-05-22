@@ -34,11 +34,12 @@ data_train = data_train.padded_batch(config['batch_size'],padded_shapes=padded_s
 data_val = tf.data.Dataset.from_generator(dataset_val.generator, output_types=dataset_val.get_output_types(),output_shapes=dataset_val.get_output_shapes())
 data_val = data_val.batch(1)
 num_steps = int(dataset_train.get_len()/(config['batch_size']*config['dataset']['samples_per_instance']))
-lr_schedule = tf.keras.optimizers.schedules.PolynomialDecay(initial_learning_rate=config['lr'], decay_steps=config['epochs']*num_steps, end_learning_rate=config['lr']/1000.0)
+lr_schedule = tf.keras.optimizers.schedules.PolynomialDecay(initial_learning_rate=config['lr'], decay_steps=config['epochs']*num_steps, end_learning_rate=config['lr']/100.0)
 optimizer = tf.optimizers.Adam(learning_rate=lr_schedule)
 
 
 train_loss = tf.keras.metrics.Mean(name='train_loss')
+model_output = tf.keras.metrics.MeanTensor(name='model_output')
 metrics_train = loss_fn.get_metrics()['train']
 metrics_val = loss_fn.get_metrics()['val']
 
@@ -65,6 +66,7 @@ def train_step(inputs_embeds, labels):
     
     optimizer.apply_gradients(gradients)
     train_loss(loss)
+    model_output(tf.nn.softmax(output))
     for metric in metrics_train:
         metric(labels, output, sample_weight=attention_mask)
     #return grads
@@ -73,6 +75,7 @@ def train_step(inputs_embeds, labels):
 def val_step(inputs_embeds, labels):
     output, _ = model(inputs_embeds, training=False)
     output = tf.nn.softmax(output)
+
     for metric in metrics_val:
         metric(labels, output)
   
@@ -111,6 +114,8 @@ for epoch in range(config['epochs']):
                 
                 tf.summary.scalar('loss', train_loss.result(), step=int(epoch*num_steps+idx))
                 train_loss.reset_states()
+                tf.summary.histogram('model_output', model_output.result(), step=int(epoch*num_steps + idx))
+                model_output.reset_states()
                 for variable in model.trainable_variables:
                     if not 'embeddings' in variable.name:
                         tf.summary.histogram(variable.name,variable.value().numpy(), step = int(epoch*num_steps+idx))
