@@ -4,3 +4,10 @@ venv
 .vscode/settings.json
 **/__pycache__
 code/logs
+**/*.pkl
+**/*.yaml
+**/*.log
+**/*.out
+**/*.err
+**/*.condor
+**/*.sh
