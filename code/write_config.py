@@ -21,7 +21,7 @@ elif global_dict['base_arch'] == 'lstm':
     base_config = {'num_units': 512}
     global_dict['base_config'] = base_config
 elif global_dict['base_arch'] == 'distil-bert':
-    global_dict['base_config'] = DistilBertConfig().to_dict()
+    global_dict['base_config'] = DistilBertConfig('distilbert-base-uncased').to_dict()
 # Training config
 global_dict['batch_size'] = 4
 global_dict['prefetch_size'] = 4
@@ -29,7 +29,7 @@ global_dict['lr'] = 0.001
 global_dict['epochs'] = 50
 global_dict['ckpt_steps'] = 1000
 global_dict['max_to_keep'] = 10
-global_dict['loss'] = 'cross_entropy'
+global_dict['loss'] = 'sigmoid'
 # Dataset Config
 dataset = {}
 dataset['data_dir'] = args.data_dir
@@ -38,8 +38,9 @@ dataset['train_video_map_file'] = args.train_video_map_file
 dataset['val_video_map_file'] = args.val_video_map_file
 
 dataset['samples_per_instance'] = 3
-dataset['sampler'] = 'UniformSamplerUnique'
+dataset['sampler'] = 'UniformSampler'
 dataset['shuffle'] = True
+dataset['weigh_labels'] = True
 
 # Head Config
 head = {}

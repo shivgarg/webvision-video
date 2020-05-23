@@ -15,7 +15,7 @@ from losses import *
 
 MODELS = { "bert-small": BertBasic, "lstm": LSTMBasic, "distil-bert": DistilBert}
 DATASET = {"UniformSampler": UniformSampler, "UniformSamplerUnique": UniformSamplerUnique}
-LOSS = {"sigmoid": sigmoid_loss, "cross_entropy": cross_entropy}
+LOSS = {"sigmoid": sigmoid_loss, "cross_entropy": cross_entropy,"kl": kl}
 
 args = argparse.ArgumentParser()
 args.add_argument('config_file')
@@ -28,14 +28,15 @@ loss_fn = LOSS[config['loss']]()
 dataset_train = DATASET[config['dataset']['sampler']](config['dataset'])
 dataset_val = DATASET[config['dataset']['sampler']](config['dataset'],train=False)
 
-input_spec, padded_spec = dataset_train.get_spec()
+input_spec, padded_spec, pad_val = dataset_train.get_spec()
 data_train = tf.data.Dataset.from_generator(dataset_train.generator, output_types=dataset_train.get_output_types(),output_shapes=dataset_train.get_output_shapes())
-data_train = data_train.padded_batch(config['batch_size'],padded_shapes=padded_spec, padding_values=(0.0,-1)).prefetch(config['prefetch_size'])
+data_train = data_train.padded_batch(config['batch_size'],padded_shapes=padded_spec, padding_values=pad_val).prefetch(config['prefetch_size'])
 data_val = tf.data.Dataset.from_generator(dataset_val.generator, output_types=dataset_val.get_output_types(),output_shapes=dataset_val.get_output_shapes())
 data_val = data_val.batch(1)
 num_steps = int(dataset_train.get_len()/(config['batch_size']*config['dataset']['samples_per_instance']))
-lr_schedule = tf.keras.optimizers.schedules.PolynomialDecay(initial_learning_rate=config['lr'], decay_steps=config['epochs']*num_steps, end_learning_rate=config['lr']/100.0)
-optimizer = tf.optimizers.Adam(learning_rate=lr_schedule)
+
+#lr_schedule = tf.keras.optimizers.schedules.PolynomialDecay(initial_learning_rate=config['lr'], decay_steps=config['epochs']*num_steps, end_learning_rate=config['lr']/100.0)
+optimizer = tf.optimizers.Adam(learning_rate=config['lr'])
 
 
 train_loss = tf.keras.metrics.Mean(name='train_loss')
@@ -57,34 +58,33 @@ summary = tf.summary.create_file_writer(config['ckpt_dir'])
 
 @tf.function(input_signature=input_spec)
 def train_step(inputs_embeds, labels):
-    with tf.GradientTape() as tape:
+    with tf.GradientTape(persistent=True) as tape:
         output, attention_mask = model(inputs_embeds, training=True)
-        loss = loss_fn(output, labels)
+        loss, output = loss_fn(output, labels)
 
-    gradients = zip(tape.gradient(loss, model.trainable_variables),model.trainable_variables)
-    
+    gradients = zip(tape.gradient(loss, model.trainable_variables),model.trainable_variables)    
     optimizer.apply_gradients(gradients)
     train_loss(loss)
-    softmax = tf.reshape(tf.nn.softmax(output),[-1,513])
+    
+    """
+    softmax = tf.reshape(output,[-1,513])
     mask = tf.cast(tf.reshape(attention_mask,[-1,1]), dtype=tf.float32)
     probs_sum = tf.reduce_sum(tf.math.multiply(softmax,mask),axis = 0)
     mean = probs_sum/tf.reduce_sum(mask)
     model_output(mean)
-
+    """
     for metric in metrics_train:
         metric(labels, output, sample_weight=attention_mask)
+    return tape.gradient(loss, model.trainable_variables)
 
 @tf.function(input_signature=input_spec)
 def val_step(inputs_embeds, labels):
     output, _ = model(inputs_embeds, training=False)
     output = tf.nn.softmax(output)
-
     for metric in metrics_val:
         metric(labels, output)
   
-
-
-ckpt.restore(manager.latest_checkpoint)
+ckpt.restore(manager.latest_checkpoint) 
 if manager.latest_checkpoint:
     print("restored from {}".format(manager.latest_checkpoint))
 else:
@@ -96,7 +96,7 @@ for epoch in range(config['epochs']):
         inputs_embeds = sample[0]
         labels = sample[1]
 
-        train_step(inputs_embeds, labels)
+        grads = train_step(inputs_embeds, labels)
         if idx%config['ckpt_steps'] == 0:
             for sample in data_val:
                 val_step(sample[0], sample[1])
@@ -104,8 +104,7 @@ for epoch in range(config['epochs']):
             print("Saved ckpt for {}/{}: {}".format(epoch,idx,path))
             with summary.as_default():
                 template = 'Epoch {}, Loss: {}'
-                print(template.format(epoch + 1,
-                            train_loss.result()),end=',')
+                print(template.format(epoch + 1, train_loss.result()),end=',')
                 for metric in metrics_train:
                     print(metric.name.upper(), metric.result().numpy(),end=',')
                     tf.summary.scalar(metric.name, metric.result(), step=int(epoch*num_steps+idx))
@@ -117,16 +116,14 @@ for epoch in range(config['epochs']):
                 
                 tf.summary.scalar('loss', train_loss.result(), step=int(epoch*num_steps+idx))
                 train_loss.reset_states()
-                tf.summary.histogram('model_output', model_output.result(), step=int(epoch*num_steps + idx))
-                model_output.reset_states()
+                #tf.summary.histogram('model_output', model_output.result(), step=int(epoch*num_steps + idx))
+                #model_output.reset_states()
                 for variable in model.trainable_variables:
                     if not 'embeddings' in variable.name:
                         tf.summary.histogram(variable.name,variable.value().numpy(), step = int(epoch*num_steps+idx))
-                """
                 for g,var in zip(grads, model.trainable_variables):
                     if (not 'embeddings' in var.name) and (not 'pooler' in var.name):
                         tf.summary.histogram("grad/{}".format(var.name), g.numpy(),step=int(epoch*num_steps+idx))                 
-                """
                 summary.flush()
                 print()
                 sys.stdout.flush()

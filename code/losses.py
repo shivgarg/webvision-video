@@ -17,7 +17,7 @@ class sigmoid_loss:
         return loss, tf.nn.sigmoid(y_pred)
 
     def get_metrics(self):
-        return [
+        METRICS = {'train': [
                     tf.keras.metrics.TruePositives(name='tp'),
                     tf.keras.metrics.FalsePositives(name='fp'),
                     tf.keras.metrics.TrueNegatives(name='tn'),
@@ -26,7 +26,18 @@ class sigmoid_loss:
                     tf.keras.metrics.Precision(name='precision'),
                     tf.keras.metrics.Recall(name='recall'),
                     tf.keras.metrics.AUC(name='auc'),
-                ]
+                    ], 
+                    'val': [
+                    tf.keras.metrics.TruePositives(name='tp'),
+                    tf.keras.metrics.FalsePositives(name='fp'),
+                    tf.keras.metrics.TrueNegatives(name='tn'),
+                    tf.keras.metrics.FalseNegatives(name='fn'), 
+                    tf.keras.metrics.BinaryAccuracy(name='accuracy'),
+                    tf.keras.metrics.Precision(name='precision'),
+                    tf.keras.metrics.Recall(name='recall'),
+                    tf.keras.metrics.AUC(name='auc'),
+                ]  }
+        return METRICS
 
 
 
@@ -40,7 +51,7 @@ class cross_entropy:
         attention_mask = self.mask.compute_mask(tf.expand_dims(y_true,-1))
         y_true = tf.where(y_true==-1,tf.zeros_like(y_true),y_true)
         loss = self.loss_fn(y_true, y_pred,attention_mask)
-        return loss
+        return loss, tf.nn.softmax(y_pred)
 
     def get_metrics(self):
         METRICS = {
@@ -50,6 +61,32 @@ class cross_entropy:
             "val":
                 [tf.keras.metrics.SparseCategoricalAccuracy(
                 name='sparse_categorical_accuracy_val')]
+            }
+        return METRICS
+        
+class kl:
+    def __init__(self):
+        super().__init__()
+        self.loss_fn = tf.keras.losses.KLDivergence()
+        self.mask = tf.keras.layers.Masking(mask_value=-1)
+    
+    def __call__(self, y_pred, y_true):
+        attention_mask = self.mask.compute_mask(y_true)
+        attention_mask = tf.expand_dims(tf.cast(attention_mask,tf.float32),-1)
+        y_true = tf.where(y_true==-1,tf.zeros_like(y_true),y_true)
+        y_true = tf.cast(y_true, tf.float32)
+        y_pred = tf.nn.softmax(y_pred)
+        loss = self.loss_fn(y_true, y_pred,attention_mask)
+        return loss, y_pred
+
+    def get_metrics(self):
+        METRICS = {
+            "train":
+                [tf.keras.metrics.KLDivergence(
+                name='kl_divergence_train')],
+            "val":
+                [tf.keras.metrics.KLDivergence(
+                name='kl_divergence_val')]
             }
         return METRICS
         
