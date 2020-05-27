@@ -98,8 +98,8 @@ for epoch in range(config['epochs']):
 
         grads = train_step(inputs_embeds, labels)
         if idx%config['ckpt_steps'] == 0:
-            for sample in data_val:
-                val_step(sample[0], sample[1])
+            for val_sample in data_val:
+                val_step(val_sample[0], val_sample[1])
             path = manager.save(int(epoch*num_steps+idx))
             print("Saved ckpt for {}/{}: {}".format(epoch,idx,path))
             with summary.as_default():

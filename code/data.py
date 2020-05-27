@@ -15,6 +15,8 @@ class UniformSampler:
         if cfg['shuffle']:
             random.shuffle(vid_order)
         num_vid_data_point = cfg['samples_per_instance']
+        if not self.train:
+            num_vid_data_point = 1
         idx = 0
         while idx < len(vid_order) + 1 - num_vid_data_point:
             features = []
@@ -27,18 +29,17 @@ class UniformSampler:
                     break
                 for k in range(video_map[vid_order[idx]][1],video_map[vid_order[idx]][2]):
                     features.append(feat[k])
-                    if len(features) >= 512:
-                        break
                     label_one_hot = np.zeros(513)
-                    j=0
+                    j = 0
                     while (j < len(label[k])) and (label[k][j] != -1):
                         label_one_hot[int(label[k][j])] = 1
-                        j+=1
+                        j += 1
                     if cfg['weigh_labels']:
-                        if j!=0:
+                        if j != 0:
                             label_one_hot = label_one_hot/j
                     labels.append(label_one_hot)
-                
+                    if len(features) >= 512:
+                        break
                 idx+=1
             yield (features, labels)
 
