@@ -67,6 +67,12 @@ class DistilBertNorm(Model):
         self.norm = tf.keras.layers.LayerNormalization()
         self.model_config = DistilBertConfig.from_dict(config['base_config'])
         self.base = TFDistilBertModel(self.model_config)
+        
+        self.fc2 = Dense(1024)
+        self.norm2 = tf.keras.layers.LayerNormalization()
+        self.gelu2 = tf.keras.layers.ReLU()
+        
+        
         self.head = HEADS[config['head']['name']]()
 
     def call(self, embeds, training=False):
@@ -74,6 +80,9 @@ class DistilBertNorm(Model):
         x = self.fc1(embeds)
         x = self.norm(x, training=training)
         x = self.base(None,  attention_mask = attention_mask, inputs_embeds=x,training=training)
+        x = self.fc2(x)
+        x = self.norm2(x,training=training)
+        x = self.gelu2(x)
         x = self.head(x[0])
         return x, attention_mask
 
@@ -82,13 +91,23 @@ class MLP(Model):
     def __init__(self, config={}):
         super(MLP,self).__init__()
         self.masking = tf.keras.layers.Masking()
-        self.fc1 = Dense(config['base_config']['dim'], activation='relu')
-        self.batch_norm = tf.keras.layers.LayerNormalization()
+        self.fc1 = Dense(config['base_config']['dim'])
+        self.norm1 = tf.keras.layers.LayerNormalization()
+        self.gelu1 = tf.keras.layers.ReLU()
+        
+        self.fc2 = Dense(3072)
+        self.norm2 = tf.keras.layers.LayerNormalization()
+        self.gelu2 = tf.keras.layers.ReLU()
+        
         self.head = HEADS[config['head']['name']]()
 
     def call(self, embeds, training=False):
         attention_mask = self.masking.compute_mask(embeds)
         x = self.fc1(embeds)
-        x = self.batch_norm(x, training=training)
+        x = self.norm1(x, training=training)
+        x = self.gelu1(x)
+        x = self.fc2(x)
+        x = self.norm2(x, training=training)
+        x = self.gelu2(x)
         x = self.head(x)
         return x, attention_mask

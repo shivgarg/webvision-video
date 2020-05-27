@@ -14,14 +14,17 @@ args=args.parse_args()
 global_dict = {}
 global_dict['exp_name'] = 'exp1'
 global_dict['ckpt_dir'] = args.ckpt_dir
-global_dict['base_arch'] = 'distil-bert'
+global_dict['base_arch'] = 'mlp'
 if global_dict['base_arch'] == 'bert-small':
     global_dict['base_config'] = BertConfig.from_pretrained('bert-base-uncased').to_dict()
 elif global_dict['base_arch'] == 'lstm':
-    base_config = {'num_units': 512}
+    base_config = {'num_units': 768}
     global_dict['base_config'] = base_config
-elif global_dict['base_arch'] == 'distil-bert':
+elif global_dict['base_arch'] == 'distil-bert' or global_dict['base_arch'] == 'distil-bert-norm':
     global_dict['base_config'] = DistilBertConfig('distilbert-base-uncased').to_dict()
+elif global_dict['base_arch'] == 'mlp':
+    base_config = {'dim': 2048}
+    global_dict['base_config'] = base_config
 # Training config
 global_dict['batch_size'] = 4
 global_dict['prefetch_size'] = 4

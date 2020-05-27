@@ -53,7 +53,7 @@ copy(args.config_file, config['ckpt_dir'])
 ckpt = tf.train.Checkpoint(optimizer=optimizer,model = model)
 manager = tf.train.CheckpointManager(ckpt, config['ckpt_dir'], 
                     max_to_keep=config['max_to_keep'], 
-                    keep_checkpoint_every_n_hours=1)
+                    keep_checkpoint_every_n_hours=3)
 summary = tf.summary.create_file_writer(config['ckpt_dir'])
 
 @tf.function(input_signature=input_spec)
