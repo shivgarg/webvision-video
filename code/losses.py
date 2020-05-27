@@ -39,6 +39,10 @@ class sigmoid_loss:
                 ]  }
         return METRICS
 
+    def get_output(self, outputs):
+        return tf.nn.sigmoid(outputs)
+
+
 
 
 class cross_entropy:
@@ -63,7 +67,10 @@ class cross_entropy:
                 name='sparse_categorical_accuracy_val')]
             }
         return METRICS
-        
+    
+    def get_output(self, outputs):
+        return tf.nn.softmax(outputs)
+
 class kl:
     def __init__(self):
         super().__init__()
@@ -73,7 +80,8 @@ class kl:
     def __call__(self, y_pred, y_true):
         attention_mask = self.mask.compute_mask(y_true)
         attention_mask = tf.expand_dims(tf.cast(attention_mask,tf.float32),-1)
-        y_true = tf.where(y_true==-1,tf.zeros_like(y_true),y_true)
+        #print(attention_mask)
+        y_true = tf.where(y_true==-1.,tf.zeros_like(y_true),y_true)
         y_true = tf.cast(y_true, tf.float32)
         y_pred = tf.nn.softmax(y_pred)
         loss = self.loss_fn(y_true, y_pred,attention_mask)
@@ -89,4 +97,6 @@ class kl:
                 name='kl_divergence_val')]
             }
         return METRICS
-        
+
+    def get_output(self, outputs):
+        return tf.nn.softmax(outputs)        

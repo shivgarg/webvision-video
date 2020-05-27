@@ -13,7 +13,7 @@ from models import *
 from losses import *
 
 
-MODELS = { "bert-small": BertBasic, "lstm": LSTMBasic, "distil-bert": DistilBert}
+MODELS = { "bert-small": BertBasic, "lstm": LSTMBasic, "distil-bert": DistilBert,"distil-bert-norm": DistilBertNorm, "mlp": MLP}
 DATASET = {"UniformSampler": UniformSampler, "UniformSamplerUnique": UniformSamplerUnique}
 LOSS = {"sigmoid": sigmoid_loss, "cross_entropy": cross_entropy,"kl": kl}
 
@@ -35,8 +35,8 @@ data_val = tf.data.Dataset.from_generator(dataset_val.generator, output_types=da
 data_val = data_val.batch(1)
 num_steps = int(dataset_train.get_len()/(config['batch_size']*config['dataset']['samples_per_instance']))
 
-#lr_schedule = tf.keras.optimizers.schedules.PolynomialDecay(initial_learning_rate=config['lr'], decay_steps=config['epochs']*num_steps, end_learning_rate=config['lr']/100.0)
-optimizer = tf.optimizers.Adam(learning_rate=config['lr'])
+lr_schedule = tf.keras.optimizers.schedules.PolynomialDecay(initial_learning_rate=config['lr'], decay_steps=config['epochs']*num_steps, end_learning_rate=config['lr']/100.0)
+optimizer = tf.optimizers.Adam(learning_rate=lr_schedule)
 
 
 train_loss = tf.keras.metrics.Mean(name='train_loss')
@@ -65,7 +65,6 @@ def train_step(inputs_embeds, labels):
     gradients = zip(tape.gradient(loss, model.trainable_variables),model.trainable_variables)    
     optimizer.apply_gradients(gradients)
     train_loss(loss)
-    
     """
     softmax = tf.reshape(output,[-1,513])
     mask = tf.cast(tf.reshape(attention_mask,[-1,1]), dtype=tf.float32)
