@@ -75,12 +75,11 @@ class kl:
     def __init__(self):
         super().__init__()
         self.loss_fn = tf.keras.losses.KLDivergence()
-        self.mask = tf.keras.layers.Masking(mask_value=-1)
+        self.mask = tf.keras.layers.Masking(mask_value=-1.)
     
     def __call__(self, y_pred, y_true):
         attention_mask = self.mask.compute_mask(y_true)
         attention_mask = tf.expand_dims(tf.cast(attention_mask,tf.float32),-1)
-        #print(attention_mask)
         y_true = tf.where(y_true==-1.,tf.zeros_like(y_true),y_true)
         y_true = tf.cast(y_true, tf.float32)
         y_pred = tf.nn.softmax(y_pred)
