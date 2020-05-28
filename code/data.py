@@ -4,6 +4,7 @@ import pickle
 import random
 import h5py
 import os
+import time
 
 class UniformSampler:
     
@@ -18,15 +19,21 @@ class UniformSampler:
         if not self.train:
             num_vid_data_point = 1
         idx = 0
+        hf = h5py.File(os.path.join(cfg['data_dir'],video_map[vid_order[idx]][0]),'r') 
+        feat = hf.get('data')[()]
+        label = hf.get('labels')[()]
+        cur_file = video_map[vid_order[idx]][0]    
         while idx < len(vid_order) + 1 - num_vid_data_point:
             features = []
             labels = []
             for i in range(num_vid_data_point):
-                hf = h5py.File(os.path.join(cfg['data_dir'],video_map[vid_order[idx]][0]),'r') 
-                feat = hf.get('data')[()]
-                label = hf.get('labels')[()]
                 if len(features) >= 512:
                     break
+                if cur_file != video_map[vid_order[idx]][0]:
+                    hf = h5py.File(os.path.join(cfg['data_dir'],video_map[vid_order[idx]][0]),'r') 
+                    feat = hf.get('data')[()]
+                    label = hf.get('labels')[()]
+                    cur_file = video_map[vid_order[idx]][0]
                 for k in range(video_map[vid_order[idx]][1],video_map[vid_order[idx]][2]):
                     features.append(feat[k])
                     label_one_hot = np.zeros(513)
@@ -46,7 +53,7 @@ class UniformSampler:
     def get_spec(self):
         return ([tf.TensorSpec(shape=[None, None, 2048], dtype=tf.float32),tf.TensorSpec(shape=[None, None, 513], dtype=tf.float32)], ([None, 2048],[None,513]),(0.,-1.))
     
-    def get_len(self):
+    def __len__(self):
         return len(self.video_map)
 
     def get_output_types(self):
@@ -76,16 +83,24 @@ class UniformSamplerUnique:
         num_vid_data_point = cfg['samples_per_instance']
         if not self.train:
             num_vid_data_point = 1
+        
         idx = 0
+        hf = h5py.File(os.path.join(cfg['data_dir'],video_map[vid_order[idx]][0]),'r') 
+        feat = hf.get('data')[()]
+        label = hf.get('labels')[()]
+        cur_file = video_map[vid_order[idx]][0]    
+        
         while idx < len(vid_order) + 1 - num_vid_data_point:
             features = []
             labels = []
             for i in range(num_vid_data_point):
                 if len(features) >= 512:
                     break
-                hf = h5py.File(os.path.join(cfg['data_dir'],video_map[vid_order[idx]][0]),'r') 
-                feat = hf.get('data')[()]
-                label = hf.get('labels')[()]
+                if cur_file != video_map[vid_order[idx]][0]:
+                    hf = h5py.File(os.path.join(cfg['data_dir'],video_map[vid_order[idx]][0]),'r') 
+                    feat = hf.get('data')[()]
+                    label = hf.get('labels')[()]
+                    cur_file = video_map[vid_order[idx]][0]
                 for j in range(video_map[vid_order[idx]][1],video_map[vid_order[idx]][2]):
                     features.append(feat[j])
                     labels.append(label[j][0])
@@ -97,7 +112,7 @@ class UniformSamplerUnique:
     def get_spec(self):
         return ([tf.TensorSpec(shape=[None, None, 2048], dtype=tf.float32),tf.TensorSpec(shape=[None, None], dtype=tf.int32)],([None, 2048],[None]),(0.,-1))
     
-    def get_len(self):
+    def __len__(self):
         return len(self.video_map)
 
     def get_output_types(self):

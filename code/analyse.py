@@ -16,7 +16,7 @@ args.add_argument('dir')
 args.add_argument('dest_dir')
 args = args.parse_args()
 
-val_frac = 0.2
+val_frac = 0.1
 
 videos = []
 for d,s,f in os.walk(args.dir):
@@ -46,6 +46,8 @@ random.shuffle(videos_list)
 num_val = int(val_frac*num_videos)
 val_videos = videos[:num_val]
 train_videos = videos[num_val:]
+train_videos.sort()
+val_videos.sort()
 
 with open(os.path.join(args.dest_dir,'videos_map_train.pkl'),'wb') as f:
     pickle.dump(train_videos, f, pickle.HIGHEST_PROTOCOL)

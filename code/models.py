@@ -80,10 +80,10 @@ class DistilBertNorm(Model):
         x = self.fc1(embeds)
         x = self.norm(x, training=training)
         x = self.base(None,  attention_mask = attention_mask, inputs_embeds=x,training=training)
-        x = self.fc2(x)
+        x = self.fc2(x[0])
         x = self.norm2(x,training=training)
         x = self.gelu2(x)
-        x = self.head(x[0])
+        x = self.head(x)
         return x, attention_mask
 
 
