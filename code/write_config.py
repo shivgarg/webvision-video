@@ -15,7 +15,7 @@ args=args.parse_args()
 global_dict = {}
 global_dict['exp_name'] = 'exp1'
 global_dict['ckpt_dir'] = args.ckpt_dir
-global_dict['base_arch'] = 'distil-bert-norm'
+global_dict['base_arch'] = 'mlp'
 if global_dict['base_arch'] == 'bert-small':
     global_dict['base_config'] = BertConfig.from_pretrained('bert-base-uncased').to_dict()
 elif global_dict['base_arch'] == 'lstm':
@@ -30,6 +30,7 @@ elif global_dict['base_arch'] == 'mlp':
 global_dict['batch_size'] = 4
 global_dict['prefetch_size'] = 4
 global_dict['lr'] = 0.001
+global_dict['end_lr'] = 0.0001
 global_dict['epochs'] = 50
 global_dict['ckpt_steps'] = 1000
 global_dict['max_to_keep'] = 10
