@@ -7,6 +7,7 @@ import random
 
 #id, filename, start_idx, end_idx
 classes = {}
+freq = [0 for i in range(513)]
 NUM_CLASSES = 513
 for i in range(NUM_CLASSES):
     classes[i] = []
@@ -27,6 +28,11 @@ for d,s,f in os.walk(args.dir):
         labels = hf.get('labels')[()]
         last = filenames[0]
         start = 0
+        for label in labels:
+            for label_idx in label:
+                if label_idx==-1:
+                    break
+                freq[int(label_idx)]+=1
         for i,fname in enumerate(filenames[1:]):
             if last != fname:
                 for label_idx in labels[i]:
@@ -38,6 +44,9 @@ for d,s,f in os.walk(args.dir):
                 last = fname
 
 print("Num of videos:",len(videos))
+
+for cls in freq:
+    print(cls)
 
 num_videos = len(videos)
 videos_list = list(range(num_videos))
@@ -56,3 +65,8 @@ with open(os.path.join(args.dest_dir,'videos_map_val.pkl'),'wb') as f:
 
 with open(os.path.join(args.dest_dir,'stats.pkl'),'wb') as f:
     pickle.dump(classes, f, pickle.HIGHEST_PROTOCOL)
+
+with open(os.path.join(args.dest_dir,'freq.pkl'),'wb') as f:
+    pickle.dump(freq, f, pickle.HIGHEST_PROTOCOL)
+
+

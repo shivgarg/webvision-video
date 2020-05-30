@@ -14,20 +14,19 @@ from models import *
 from losses import *
 
 
-gpus = tf.config.experimental.list_physical_devices('GPU')
-for gpu in gpus:
-    tf.config.experimental.set_memory_growth(gpu, True)
-
+tf.autograph.set_verbosity(10)
 
 MODELS = { "bert-small": BertBasic, "lstm": LSTMBasic, "distil-bert": DistilBert,"distil-bert-norm": DistilBertNorm, "mlp": MLP}
 DATASET = {"UniformSampler": UniformSampler, "UniformSamplerUnique": UniformSamplerUnique}
-LOSS = {"sigmoid": sigmoid_loss, "cross_entropy": cross_entropy,"kl": kl}
+LOSS = {"sigmoid": sigmoid_loss, "cross_entropy": cross_entropy,"kl": kl, "kl_weighted": kl_weighted, "cross_entropy_weighted": cross_entropy_weighted}
 
 args = argparse.ArgumentParser()
 args.add_argument('config_file')
 args = args.parse_args()
 
 config = yaml.safe_load(open(args.config_file,'r'))
+
+
 
 model = MODELS[config['base_arch']](config)
 loss_fn = LOSS[config['loss']]()
@@ -36,7 +35,7 @@ dataset_val = DATASET[config['dataset']['sampler']](config['dataset'],train=Fals
 
 input_spec, padded_spec, pad_val = dataset_train.get_spec()
 data_train = tf.data.Dataset.from_generator(dataset_train.generator, output_types=dataset_train.get_output_types(),output_shapes=dataset_train.get_output_shapes())
-data_train = data_train.padded_batch(config['batch_size'],padded_shapes=padded_spec, padding_values=pad_val).prefetch(tf.data.experimental.AUTOTUNE)
+data_train = data_train.shuffle(config['batch_size']*config['prefetch_size']).padded_batch(config['batch_size'],padded_shapes=padded_spec, padding_values=pad_val).prefetch(tf.data.experimental.AUTOTUNE)
 data_val = tf.data.Dataset.from_generator(dataset_val.generator, output_types=dataset_val.get_output_types(),output_shapes=dataset_val.get_output_shapes())
 data_val = data_val.padded_batch(config['batch_size'],padded_shapes=padded_spec, padding_values=pad_val).prefetch(tf.data.experimental.AUTOTUNE)
 num_steps = int(len(dataset_train)/(config['batch_size']*config['dataset']['samples_per_instance']))
@@ -55,8 +54,7 @@ if not os.path.isdir(config['ckpt_dir']):
     os.makedirs(config['ckpt_dir'])
 copy(args.config_file, config['ckpt_dir'])
 
-
-ckpt = tf.train.Checkpoint(optimizer=optimizer,model = model)
+ckpt  = tf.train.Checkpoint(optimizer=optimizer,model = model) 
 manager = tf.train.CheckpointManager(ckpt, config['ckpt_dir'], 
                     max_to_keep=config['max_to_keep'], 
                     keep_checkpoint_every_n_hours=3)
@@ -78,9 +76,12 @@ def train_step(inputs_embeds, labels):
     mean = probs_sum/tf.reduce_sum(mask)
     model_output(mean)
     """
+    if config['dataset']['weighted']:
+        labels = tf.cast(labels[:,:,:-1], tf.int32)
+    labels = tf.squeeze(labels)
     for metric in metrics_train:
         metric(labels, output, sample_weight=attention_mask)
-    return tape.gradient(loss, model.trainable_variables)
+    return tape.gradient(loss, model.trainable_variables), output
 
 @tf.function(input_signature=input_spec)
 def val_step(inputs_embeds, labels):
@@ -101,17 +102,18 @@ for epoch in tqdm(range(config['epochs'])):
         print(idx)
         inputs_embeds = sample[0]
         labels = sample[1]
-        grads = train_step(inputs_embeds, labels)
+        grads, output = train_step(inputs_embeds, labels)
         if idx%config['ckpt_steps'] == 0:
-            with tqdm(total=len(dataset_val)) as progress_bar:
-                for val_sample in data_val:
-                    val_step(val_sample[0], val_sample[1])
-                    progress_bar.update(config['batch_size'])
             path = manager.save(int(epoch*num_steps+idx))
             print("Saved ckpt for {}/{}: {}".format(epoch,idx,path))
             with summary.as_default():
                 template = 'Epoch {}, Loss: {}'
                 print(template.format(epoch + 1, train_loss.result()),end=',')
+                #with tqdm(total=len(dataset_val)) as progress_bar:
+                #    for val_sample in data_val:
+                #        val_step(val_sample[0], val_sample[1])
+                #        progress_bar.update(config['batch_size'])
+ 
                 for metric in metrics_train:
                     print(metric.name.upper(), metric.result().numpy(),end=',')
                     tf.summary.scalar(metric.name, metric.result(), step=int(epoch*num_steps+idx))

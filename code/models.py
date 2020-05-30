@@ -63,8 +63,9 @@ class DistilBertNorm(Model):
     def __init__(self, config={}):
         super(DistilBertNorm,self).__init__()
         self.masking = tf.keras.layers.Masking()
-        self.fc1 = Dense(config['base_config']['dim'], activation='relu')
+        self.fc1 = Dense(config['base_config']['dim'])
         self.norm = tf.keras.layers.LayerNormalization()
+        self.relu = tf.keras.layers.ReLU()
         self.model_config = DistilBertConfig.from_dict(config['base_config'])
         self.base = TFDistilBertModel(self.model_config)
         
@@ -79,13 +80,13 @@ class DistilBertNorm(Model):
         attention_mask = self.masking.compute_mask(embeds)
         x = self.fc1(embeds)
         x = self.norm(x, training=training)
+        x = self.relu(x)
         x = self.base(None,  attention_mask = attention_mask, inputs_embeds=x,training=training)
         x = self.fc2(x[0])
         x = self.norm2(x,training=training)
         x = self.gelu2(x)
         x = self.head(x)
         return x, attention_mask
-
 
 class MLP(Model):
     def __init__(self, config={}):

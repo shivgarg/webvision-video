@@ -6,6 +6,7 @@ args.add_argument('--data_dir',default='./')
 args.add_argument('--stats_file', default='./stats.pkl')
 args.add_argument('--train_video_map_file', default='./videos_map.pkl')
 args.add_argument('--val_video_map_file', default='./videos_map.pkl')
+args.add_argument('--freq_file',default='./freq.pkl')
 args.add_argument('--ckpt_dir', default='./')
 args.add_argument('output_filename')
 args=args.parse_args()
@@ -14,7 +15,7 @@ args=args.parse_args()
 global_dict = {}
 global_dict['exp_name'] = 'exp1'
 global_dict['ckpt_dir'] = args.ckpt_dir
-global_dict['base_arch'] = 'mlp'
+global_dict['base_arch'] = 'distil-bert-norm'
 if global_dict['base_arch'] == 'bert-small':
     global_dict['base_config'] = BertConfig.from_pretrained('bert-base-uncased').to_dict()
 elif global_dict['base_arch'] == 'lstm':
@@ -39,11 +40,12 @@ dataset['data_dir'] = args.data_dir
 dataset['stats_file'] = args.stats_file
 dataset['train_video_map_file'] = args.train_video_map_file
 dataset['val_video_map_file'] = args.val_video_map_file
-
+dataset['freq_file'] = args.freq_file
 dataset['samples_per_instance'] = 3
 dataset['sampler'] = 'UniformSampler'
 dataset['shuffle'] = True
 dataset['weigh_labels'] = True
+dataset['weighted'] = True
 
 # Head Config
 head = {}

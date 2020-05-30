@@ -43,8 +43,6 @@ class sigmoid_loss:
         return tf.nn.sigmoid(outputs)
 
 
-
-
 class cross_entropy:
     def __init__(self):
         super().__init__()
@@ -55,6 +53,32 @@ class cross_entropy:
         attention_mask = self.mask.compute_mask(tf.expand_dims(y_true,-1))
         y_true = tf.where(y_true==-1,tf.zeros_like(y_true),y_true)
         loss = self.loss_fn(y_true, y_pred,attention_mask)
+        return loss, tf.nn.softmax(y_pred)
+
+    def get_metrics(self):
+        METRICS = {
+            "train":
+                [tf.keras.metrics.SparseCategoricalAccuracy(
+                name='sparse_categorical_accuracy_train')],
+            "val":
+                [tf.keras.metrics.SparseCategoricalAccuracy(
+                name='sparse_categorical_accuracy_val')]
+            }
+        return METRICS
+    
+    def get_output(self, outputs):
+        return tf.nn.softmax(outputs)
+
+
+class cross_entropy_weighted:
+    def __init__(self):
+        super().__init__()
+        self.loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+    
+    def __call__(self, y_pred, y_true):
+        labels = tf.cast(tf.squeeze(y_true[:,:,:-1]), tf.int32)
+        sample_weights = y_true[:,:,-1]
+        loss = self.loss_fn(labels, y_pred, sample_weights)
         return loss, tf.nn.softmax(y_pred)
 
     def get_metrics(self):
@@ -84,6 +108,33 @@ class kl:
         y_true = tf.cast(y_true, tf.float32)
         y_pred = tf.nn.softmax(y_pred)
         loss = self.loss_fn(y_true, y_pred,attention_mask)
+        return loss, y_pred
+
+    def get_metrics(self):
+        METRICS = {
+            "train":
+                [tf.keras.metrics.KLDivergence(
+                name='kl_divergence_train')],
+            "val":
+                [tf.keras.metrics.KLDivergence(
+                name='kl_divergence_val')]
+            }
+        return METRICS
+
+    def get_output(self, outputs):
+        return tf.nn.softmax(outputs)        
+
+
+class kl_weighted:
+    def __init__(self):
+        super().__init__()
+        self.loss_fn = tf.keras.losses.KLDivergence()
+    
+    def __call__(self, y_pred, y_true):
+        labels = y_true[:,:,:-1]
+        sample_weights = y_true[:,:,-1]
+        y_pred = tf.nn.softmax(y_pred)
+        loss = self.loss_fn(labels, y_pred, sample_weights)
         return loss, y_pred
 
     def get_metrics(self):
