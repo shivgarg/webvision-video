@@ -38,11 +38,13 @@ data_train = tf.data.Dataset.from_generator(dataset_train.generator, output_type
 data_train = data_train.shuffle(config['batch_size']*config['prefetch_size']).padded_batch(config['batch_size'],padded_shapes=padded_spec, padding_values=pad_val).prefetch(tf.data.experimental.AUTOTUNE)
 data_val = tf.data.Dataset.from_generator(dataset_val.generator, output_types=dataset_val.get_output_types(),output_shapes=dataset_val.get_output_shapes())
 data_val = data_val.padded_batch(config['batch_size'],padded_shapes=padded_spec, padding_values=pad_val).prefetch(tf.data.experimental.AUTOTUNE)
-num_steps = int(len(dataset_train)/(config['batch_size']*config['dataset']['samples_per_instance']))
 
-lr_schedule = tf.keras.optimizers.schedules.PolynomialDecay(initial_learning_rate=config['lr'], decay_steps=config['epochs']*num_steps, end_learning_rate=config['end_lr'])
-optimizer = tf.optimizers.Adam(learning_rate=lr_schedule)
-
+num_steps = int(len(dataset_train)/(config['num_accum_steps']*config['batch_size']*config['dataset']['samples_per_instance']))
+warmup_fraction = config['warmup_fraction']
+weight_decay = config['weight_decay']
+optimizer = tfa.optimizers.RectifiedAdam(lr=config['lr'],beta_2=0.98,epsilon=1e-6,
+                            weight_decay=weight_decay,total_steps=config['epochs']*num_steps,
+                            warmup_proportion=warmup_fraction,min_lr=config['end_lr'])
 
 train_loss = tf.keras.metrics.Mean(name='train_loss')
 model_output = tf.keras.metrics.MeanTensor(name='model_output')
@@ -62,26 +64,18 @@ summary = tf.summary.create_file_writer(config['ckpt_dir'])
 
 @tf.function(input_signature=input_spec)
 def train_step(inputs_embeds, labels):
-    with tf.GradientTape(persistent=True) as tape:
+    with tf.GradientTape() as tape:
         output, attention_mask = model(inputs_embeds, training=True)
         loss, output = loss_fn(output, labels)
 
-    gradients = zip(tape.gradient(loss, model.trainable_variables),model.trainable_variables)    
-    optimizer.apply_gradients(gradients)
     train_loss(loss)
-    """
-    softmax = tf.reshape(output,[-1,513])
-    mask = tf.cast(tf.reshape(attention_mask,[-1,1]), dtype=tf.float32)
-    probs_sum = tf.reduce_sum(tf.math.multiply(softmax,mask),axis = 0)
-    mean = probs_sum/tf.reduce_sum(mask)
-    model_output(mean)
-    """
+    
     if config['dataset']['weighted']:
         labels = tf.cast(labels[:,:,:-1], tf.int32)
     labels = tf.squeeze(labels)
     for metric in metrics_train:
         metric(labels, output, sample_weight=attention_mask)
-    return tape.gradient(loss, model.trainable_variables), output
+    return tape.gradient(loss, model.trainable_variables)
 
 @tf.function(input_signature=input_spec)
 def val_step(inputs_embeds, labels):
@@ -96,43 +90,74 @@ if manager.latest_checkpoint:
 else:
     print("Initialising from scratch")
 
+
+@tf.function
+def accumulate_gradients(num_accumulated, gradients, accum_gradients):
+    if num_accumulated == 0:
+        return gradients
+    else:
+        arr = []
+        for idx, grads in enumerate(gradients):
+            if grads == None:
+                arr.append(None)
+            else:
+                arr.append((num_accumulated*accum_gradients[idx] + grads)/(num_accumulated+1))
+        return arr
+
+
+
+tf.profiler.experimental.start(config['ckpt_dir'])
+accumulated_gradients = None        
+steps = 0
+num_accum_steps = config['num_accum_steps']
 for epoch in tqdm(range(config['epochs'])):
     print(epoch)
-    for idx, sample in enumerate(data_train):
-        print(idx)
+    for sample in data_train:
+        print(steps)
         inputs_embeds = sample[0]
         labels = sample[1]
-        grads, output = train_step(inputs_embeds, labels)
-        if idx%config['ckpt_steps'] == 0:
-            path = manager.save(int(epoch*num_steps+idx))
-            print("Saved ckpt for {}/{}: {}".format(epoch,idx,path))
+        grads = train_step(inputs_embeds, labels)
+        accumulated_gradients = accumulate_gradients(steps%num_accum_steps,grads,accumulated_gradients)
+        
+        if steps%num_accum_steps == num_accum_steps-1:
+            gradients = zip(accumulated_gradients, model.trainable_variables)
+            optimizer.apply_gradients(gradients)
+
+        if steps%(num_accum_steps*config['ckpt_steps']) == num_accum_steps*config['ckpt_steps']-1 :
+            tf.profiler.experimental.stop()
+            tf.profiler.experimental.start(config['ckpt_dir'])
+            
+            path = manager.save(steps)
+            print("Saved ckpt for {}/{}: {}".format(epoch,steps/(num_accum_steps),path))
             with summary.as_default():
                 template = 'Epoch {}, Loss: {}'
                 print(template.format(epoch + 1, train_loss.result()),end=',')
-                #with tqdm(total=len(dataset_val)) as progress_bar:
-                #    for val_sample in data_val:
-                #        val_step(val_sample[0], val_sample[1])
-                #        progress_bar.update(config['batch_size'])
+             
+                with tqdm(total=len(dataset_val)) as progress_bar:
+                    for val_sample in data_val:
+                        val_step(val_sample[0], val_sample[1])
+                        progress_bar.update(config['batch_size'])
  
                 for metric in metrics_train:
                     print(metric.name.upper(), metric.result().numpy(),end=',')
-                    tf.summary.scalar(metric.name, metric.result(), step=int(epoch*num_steps+idx))
+                    tf.summary.scalar(metric.name, metric.result(), step=int(steps/(num_accum_steps)))
                     metric.reset_states()
                 for metric in metrics_val:
                     print(metric.name.upper(), metric.result().numpy(),end=',')
-                    tf.summary.scalar(metric.name, metric.result(), step=int(epoch*num_steps+idx))
+                    tf.summary.scalar(metric.name, metric.result(), step=int(steps/(num_accum_steps)))
                     metric.reset_states()
                 
-                tf.summary.scalar('loss', train_loss.result(), step=int(epoch*num_steps+idx))
+                tf.summary.scalar('loss', train_loss.result(), step=int(steps/(num_accum_steps)))
                 train_loss.reset_states()
                 #tf.summary.histogram('model_output', model_output.result(), step=int(epoch*num_steps + idx))
                 #model_output.reset_states()
                 for variable in model.trainable_variables:
                     if not 'embeddings' in variable.name:
-                        tf.summary.histogram(variable.name,variable.value().numpy(), step = int(epoch*num_steps+idx))
-                for g,var in zip(grads, model.trainable_variables):
+                        tf.summary.histogram(variable.name,variable.value().numpy(), step = int(steps/(num_accum_steps)))
+                for g,var in zip(accumulated_gradients, model.trainable_variables):
                     if (not 'embeddings' in var.name) and (not 'pooler' in var.name):
-                        tf.summary.histogram("grad/{}".format(var.name), g.numpy(),step=int(epoch*num_steps+idx))                 
+                        tf.summary.histogram("grad/{}".format(var.name), g.numpy(),step=int(steps/(num_accum_steps)))                 
                 summary.flush()
                 print()
-                sys.stdout.flush()
+        sys.stdout.flush()
+        steps+=1
