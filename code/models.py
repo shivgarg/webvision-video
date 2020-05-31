@@ -7,7 +7,8 @@ import numpy as np
 
 
 HEADS = {
-            'default' : BertHead
+            'default' : BertHead,
+            'embed'   : EmbedHead
         }
 
 
@@ -19,7 +20,7 @@ class BertBasic(Model):
         self.fc1 = Dense(config['base_config']['hidden_size'], activation='relu')
         self.model_config = BertConfig.from_dict(config['base_config'])
         self.base = TFBertModel(self.model_config)
-        self.head = HEADS[config['head']['name']]()
+        self.head = HEADS[config['head']['name']](config['head'])
 
     def call(self, embeds, training=False):
         attention_mask = self.masking.compute_mask(embeds)
@@ -34,7 +35,7 @@ class LSTMBasic(Model):
         self.masking = tf.keras.layers.Masking()
         self.fc1 = Dense(config['base_config']['num_units'], activation='relu')
         self.base = tf.keras.layers.LSTM(config['base_config']['num_units'],return_sequences=True)
-        self.head = HEADS[config['head']['name']]()
+        self.head = HEADS[config['head']['name']](config['head'])
 
     def call(self, embeds, training=False):
         attention_mask = self.masking.compute_mask(embeds)
@@ -50,7 +51,7 @@ class DistilBert(Model):
         self.fc1 = Dense(config['base_config']['dim'], activation='relu')
         self.model_config = DistilBertConfig.from_dict(config['base_config'])
         self.base = TFDistilBertModel(self.model_config)
-        self.head = HEADS[config['head']['name']]()
+        self.head = HEADS[config['head']['name']](config['head'])
 
     def call(self, embeds, training=False):
         attention_mask = self.masking.compute_mask(embeds)
@@ -74,7 +75,7 @@ class DistilBertNorm(Model):
         self.gelu2 = tf.keras.layers.ReLU()
         
         
-        self.head = HEADS[config['head']['name']]()
+        self.head = HEADS[config['head']['name']](config['head'])
 
     def call(self, embeds, training=False):
         attention_mask = self.masking.compute_mask(embeds)
@@ -100,7 +101,7 @@ class MLP(Model):
         self.norm2 = tf.keras.layers.LayerNormalization()
         self.gelu2 = tf.keras.layers.ReLU()
         
-        self.head = HEADS[config['head']['name']]()
+        self.head = HEADS[config['head']['name']](config['head'])
 
     def call(self, embeds, training=False):
         attention_mask = self.masking.compute_mask(embeds)

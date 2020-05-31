@@ -9,6 +9,7 @@ args.add_argument('--val_video_map_file', default='./videos_map.pkl')
 args.add_argument('--freq_file',default='./freq.pkl')
 args.add_argument('--ckpt_dir', default='./')
 args.add_argument('output_filename')
+args.add_argument('--head_weights_file',default='./')
 args=args.parse_args()
 
 # Global dict
@@ -50,7 +51,8 @@ dataset['weighted'] = True
 
 # Head Config
 head = {}
-head['name'] = 'default'
+head['name'] = 'embed'
+head['weights_file'] = args.head_weights_file
 
 global_dict['head'] = head
 global_dict['dataset'] = dataset
