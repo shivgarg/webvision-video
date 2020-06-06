@@ -51,8 +51,9 @@ for files in tqdm(os.listdir(args.test_dir)):
     while cur_frame < num_frames:
         next_frame = min(cur_frame+NUM_FRAMES,num_frames)
         segment = video[cur_frame:next_frame,:]
+        segment = np.expand_dims(segment,0)
         segment = tf.convert_to_tensor(segment)
-        output.append(eval_step(segment).numpy())
+        output.append(tf.squeeze(eval_step(segment)).numpy())
         cur_frame = next_frame
     output = np.concatenate(output,axis=0)
     dest_file = "{}/{}".format(save_dir,files)
