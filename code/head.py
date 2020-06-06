@@ -17,10 +17,9 @@ class BertHead(Model):
 
 class EmbedHead(Model):
     def __init__(self, cfg):
-        super(E,bedHead,self).__init__()
+        super(EmbedHead,self).__init__()
         self.fc1 = Dense(768)
         self.embeddings = tf.constant(np.load(cfg['weights_file']))
-
 
     def call(self, x):
         x = self.fc1(x)
