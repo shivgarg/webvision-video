@@ -91,7 +91,7 @@ else:
     print("Initialising from scratch")
 
 
-@tf.function
+@tf.function(experimental_relax_shapes=True)
 def accumulate_gradients(num_accumulated, gradients, accum_gradients):
     if num_accumulated == 0:
         return gradients
@@ -104,39 +104,37 @@ def accumulate_gradients(num_accumulated, gradients, accum_gradients):
                 arr.append((num_accumulated*accum_gradients[idx] + grads)/(num_accumulated+1))
         return arr
 
-
-
-tf.profiler.experimental.start(config['ckpt_dir'])
+@tf.function
+def apply_grads(grads):
+    gradients = zip(grads, model.trainable_variables)
+    optimizer.apply_gradients(gradients)
+    
 accumulated_gradients = None        
 steps = 0
 num_accum_steps = config['num_accum_steps']
 for epoch in tqdm(range(config['epochs'])):
     print(epoch)
     for sample in data_train:
-        print(steps)
         inputs_embeds = sample[0]
         labels = sample[1]
         grads = train_step(inputs_embeds, labels)
         accumulated_gradients = accumulate_gradients(steps%num_accum_steps,grads,accumulated_gradients)
         
         if steps%num_accum_steps == num_accum_steps-1:
-            gradients = zip(accumulated_gradients, model.trainable_variables)
-            optimizer.apply_gradients(gradients)
-
+            print(int(steps/num_accum_steps))
+            apply_grads(accumulated_gradients)
+       
         if steps%(num_accum_steps*config['ckpt_steps']) == num_accum_steps*config['ckpt_steps']-1 :
-            tf.profiler.experimental.stop()
-            tf.profiler.experimental.start(config['ckpt_dir'])
-            
             path = manager.save(steps)
             print("Saved ckpt for {}/{}: {}".format(epoch,steps/(num_accum_steps),path))
             with summary.as_default():
                 template = 'Epoch {}, Loss: {}'
                 print(template.format(epoch + 1, train_loss.result()),end=',')
              
-                with tqdm(total=len(dataset_val)) as progress_bar:
-                    for val_sample in data_val:
-                        val_step(val_sample[0], val_sample[1])
-                        progress_bar.update(config['batch_size'])
+                #with tqdm(total=len(dataset_val)) as progress_bar:
+                #    for val_sample in data_val:
+                #        val_step(val_sample[0], val_sample[1])
+                #        progress_bar.update(config['batch_size'])
  
                 for metric in metrics_train:
                     print(metric.name.upper(), metric.result().numpy(),end=',')

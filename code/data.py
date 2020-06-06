@@ -6,6 +6,7 @@ import h5py
 import os
 import time
 import gc
+import math
 
 class UniformSampler:
     
@@ -51,7 +52,7 @@ class UniformSampler:
                         if j != 0:
                             label_one_hot = label_one_hot/j
                     labels.append(label_one_hot)
-                    sample_weights.append([cur_weight*len(self.video_map)])
+                    sample_weights.append([math.sqrt(cur_weight*len(self.video_map))])
                     if len(features) >= 512:
                         break
                 idx+=1
@@ -124,7 +125,7 @@ class UniformSamplerUnique:
                 for j in range(video_map[vid_order[idx]][1],video_map[vid_order[idx]][2]):
                     features.append(feat[j])
                     labels.append([label[j][0]])
-                    sample_weights.append([len(self.video_map)/self.freq[int(label[j][0])]])
+                    sample_weights.append([math.sqrt(len(self.video_map)/self.freq[int(label[j][0])])])
                     if len(features) >= 512:
                         break      
                 idx += 1
