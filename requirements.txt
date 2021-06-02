@@ -47,6 +47,6 @@ tokenizers==0.5.2
 tqdm==4.45.0
 transformers==2.8.0
 typeguard==2.7.1
-urllib3==1.25.9
+urllib3==1.26.5
 Werkzeug==1.0.1
 wrapt==1.12.1
